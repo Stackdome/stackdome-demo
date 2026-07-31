@@ -1,0 +1,41 @@
+services:
+  web:
+    build: ./web
+    ports:
+      - "3000:3000"
+    environment:
+      CELEBRATION: ${CELEBRATION:-confetti}
+      HAT: ${HAT:-party}
+      HEADLINE: ${HEADLINE:-Your stack is now live.}
+      PUBLIC_URL: ${PUBLIC_URL:-}
+      REDIS_URL: redis://redis:6379
+    depends_on:
+      redis:
+        condition: service_healthy
+    restart: unless-stopped
+
+  worker:
+    build: ./worker
+    environment:
+      CELEBRATION: ${CELEBRATION:-confetti}
+      REDIS_URL: redis://redis:6379
+    depends_on:
+      redis:
+        condition: service_healthy
+    restart: unless-stopped
+    # no ports: the worker is reached through Redis, not over HTTP
+
+  redis:
+    image: redis:7-alpine
+    command: ["redis-server", "--appendonly", "yes"]
+    volumes:
+      - redis:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 3s
+      timeout: 3s
+      retries: 10
+    restart: unless-stopped
+
+volumes:
+  redis:                  # all persistent state lives here

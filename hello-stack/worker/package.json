@@ -1,0 +1,12 @@
+{
+  "name": "hello-stack-worker",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "start": "node index.js"
+  },
+  "dependencies": {
+    "ioredis": "^5.4.1"
+  }
+}
