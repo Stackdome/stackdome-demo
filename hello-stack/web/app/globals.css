@@ -111,14 +111,9 @@ button.go:focus-visible{outline:2px solid #FFD2AC;outline-offset:4px;}
      overflow-x:auto;white-space:pre;color:#B9C2CD;}
 .env .k{color:var(--amber);}
 .env .c{color:#39424F;}
-.steps{margin:0;padding:0;list-style:none;}
-.steps li{font-size:13px;line-height:1.65;color:var(--dim);padding-left:20px;position:relative;margin-bottom:8px;}
-.steps li::before{content:"→";position:absolute;left:0;color:var(--faint);font-family:"IBM Plex Mono",monospace;}
-.steps li:last-child{margin-bottom:0;}
 
-.mark{margin-bottom:14px !important;}
 .status{
-  margin:0 0 46px;font-family:"IBM Plex Mono",monospace;font-size:11.5px;color:#4E5966;
+  margin:18px 0 0;font-family:"IBM Plex Mono",monospace;font-size:11px;color:#4E5966;
   display:flex;align-items:center;justify-content:center;gap:8px;letter-spacing:.02em;
 }
 .status b{color:#98A2AE;font-weight:500;}
@@ -150,9 +145,10 @@ button.go.deny{animation:deny .45s cubic-bezier(.3,.9,.3,1);}
 
 /* ---------- the worker ---------- */
 .launch{position:relative;display:inline-block;margin-top:186px;}
+/* the 6px answers the svg box, which the popper arm pads to the right */
 .bay{
-  position:absolute;bottom:50%;left:70%;width:360px;height:340px;
-  transform:translateX(-50%);overflow:hidden;pointer-events:none;z-index:0;
+  position:absolute;bottom:50%;left:50%;width:360px;height:340px;
+  transform:translateX(calc(-50% + 6px));overflow:hidden;pointer-events:none;z-index:0;
 }
 .guy{
   position:absolute;bottom:-206px;left:50%;width:190px;pointer-events:none;

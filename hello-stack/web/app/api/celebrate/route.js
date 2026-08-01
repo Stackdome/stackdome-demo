@@ -4,7 +4,8 @@ import { config } from '../../../lib/config';
 export const dynamic = 'force-dynamic';
 
 export async function POST(req) {
-  const { clientId } = await req.json();
+  /* an unparseable body is an anonymous celebration, not a 500 */
+  const { clientId = null } = await req.json().catch(() => ({}));
   const jobId = crypto.randomUUID();
   const job = { jobId, clientId, kind: config.celebration };
 
