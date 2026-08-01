@@ -10,6 +10,7 @@ import * as Fx from './Fx';
 import { CELEBRATIONS } from '../lib/config';
 
 const BATCH = 10;          /* at ten queued, one job takes all ten */
+const PAIR = 2;            /* anything waiting goes two at a time */
 const DWELL = 250;         /* minimum dwell per stage, or the path lights at once */
 const SEEN_CAP = 300;
 
@@ -192,14 +193,12 @@ export default function Stage({ config }) {
 
     if (ev.stage === 'claimed') {
       const group = [ev];
-      if (queueRef.current >= BATCH) {
-        /* a real backlog goes in one shot in EVERY browser: all claimed jobs
-           in the buffer join the burst, whoever pressed them, and the count
-           and queue move by all of them at once */
-        for (let i = 0; i < buf.current.length; i++) {
-          const e = buf.current[i];
-          if (e.stage === 'claimed') { group.push(e); buf.current.splice(i, 1); i--; }
-        }
+      /* one burst stands for several jobs, in every browser, whoever pressed them */
+      const q = queueRef.current;
+      const cap = q >= BATCH ? Infinity : q >= PAIR ? PAIR : 1;
+      for (let i = 0; i < buf.current.length && group.length < cap; i++) {
+        const e = buf.current[i];
+        if (e.stage === 'claimed') { group.push(e); buf.current.splice(i, 1); i--; }
       }
       return playClaimed(group, group.some(isMine));
     }
@@ -232,8 +231,10 @@ export default function Stage({ config }) {
     /* everyone's job gets the full party — the subline says whose it was */
     if (guy) { guy.classList.remove('peek'); guy.classList.add('in'); }
     if (kind === 'lasers' && !reduce.current) { clearTimeout(discoT.current); setDiscoDown(true); }
-    if (take > 1 && guy && !reduce.current) {
-      guy.classList.add('hard');                   /* a backlog rattles harder */
+    /* a pair is not worth shaking the page over */
+    const heavy = take >= BATCH;
+    if (heavy && guy && !reduce.current) {
+      guy.classList.add('hard');
       t(() => guy.classList.remove('hard'), 500);
     }
 
@@ -252,7 +253,7 @@ export default function Stage({ config }) {
       if (!reduce.current) act(kind, take);
       const h = h1Ref.current;
       if (h) { h.classList.remove('jump'); void h.offsetWidth; h.classList.add('jump'); }
-      if (take > 1) {
+      if (heavy) {
         document.body.classList.add('shake');
         t(() => document.body.classList.remove('shake'), 520);
       }
@@ -475,19 +476,6 @@ export default function Stage({ config }) {
       <main>
         <div className="mark"><Wordmark /></div>
 
-        <p className={'status' + (net === 'down' ? ' down' : net === 'back' ? ' back' : '')}>
-          <span id="uptime">{uptime || 'live for 0s'}</span>
-          <span className="dot-sep">&#183;</span>
-          <span className="livedot"></span>
-          <span id="netlabel">
-            {net === 'down'
-              ? 'reconnecting in ' + retryIn + 's'
-              : net === 'back'
-                ? 'reconnected'
-                : <><b>{watching}</b> watching</>}
-          </span>
-        </p>
-
         <h1 ref={h1Ref}>{config.headline}</h1>
 
         <button className={'link' + (copied ? ' done' : '') + (copyFailed ? ' failed' : '')} ref={linkRef} onClick={copy}>
@@ -523,6 +511,20 @@ export default function Stage({ config }) {
                   {held > 0 && <span className="warn">{' · ' + held + ' to send'}</span>}
                 </>}
           </p>
+          {/* uptime ticks every second, so it stays out of the tally's aria-live */}
+          <p className={'status' + (net === 'down' ? ' down' : net === 'back' ? ' back' : '')}>
+            <span id="uptime">{uptime || 'live for 0s'}</span>
+            <span className="dot-sep">&#183;</span>
+            <span className="livedot"></span>
+            <span id="netlabel">
+              {net === 'down'
+                ? 'reconnecting in ' + retryIn + 's'
+                : net === 'back'
+                  ? 'reconnected'
+                  : <><b>{watching}</b> watching</>}
+            </span>
+          </p>
+
           {/* the count never yields its line — passing messages get their own */}
           <p className="tally subline" aria-live="polite">
             {msg ? <span className={msg.cls}>{msg.text}</span> : <span>&#160;</span>}
