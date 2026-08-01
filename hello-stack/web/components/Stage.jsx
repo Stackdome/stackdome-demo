@@ -4,7 +4,7 @@ import { useEffect, useRef, useState } from 'react';
 import Bot from './Bot';
 import DiscoBall from './DiscoBall';
 import Path from './Path';
-import Tabs from './Tabs';
+import About from './About';
 import Wordmark from './Wordmark';
 import * as Fx from './Fx';
 import { CELEBRATIONS } from '../lib/config';
@@ -531,7 +531,7 @@ export default function Stage({ config }) {
           </p>
         </div>
 
-        <Tabs config={config} />
+        <About config={config} />
       </main>
     </>
   );

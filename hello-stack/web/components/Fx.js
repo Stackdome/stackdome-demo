@@ -28,9 +28,24 @@ function ensure() { if (!raf) raf = requestAnimationFrame(loop); }
 
 var COLORS = ["#F97316", "#FB8B3C", "#BB4717", "#FDFCF9", "#34D399", "#FFD2AC"];
 
+/* the pale bit of the palette is the only one drawn straight onto the page, so
+   it is the only one that has to follow the theme. read per burst, not per frame. */
+var PAPER = "#FDFCF9";
+function readPaper() {
+  try {
+    var v = getComputedStyle(document.documentElement).getPropertyValue("--paper").trim();
+    if (v) PAPER = v;
+  } catch (e) {}
+}
+function pick(arr) {
+  var c = arr[(Math.random() * arr.length) | 0];
+  return c === "#FDFCF9" ? PAPER : c;
+}
+
 /* ---- confetti ---- */
 export function confetti(x, y, aim, mult) {
   if (!ctx) return;
+  readPaper();
   mult = mult || 1;
   var N = Math.min(150 * mult, 520);
   for (var i = 0; i < N; i++) {
@@ -41,7 +56,7 @@ export function confetti(x, y, aim, mult) {
       x: x, y: y, vx: Math.cos(a) * sp, vy: Math.sin(a) * sp,
       w: rib ? 3 : 5 + Math.random() * 6, h: rib ? 15 + Math.random() * 9 : 3 + Math.random() * 5,
       rot: Math.random() * Math.PI, vr: (Math.random() - .5) * (rib ? .16 : .36),
-      rib: rib, ph: Math.random() * 6.28, c: COLORS[(Math.random() * COLORS.length) | 0],
+      rib: rib, ph: Math.random() * 6.28, c: pick(COLORS),
       life: 0, span: rib ? 150 : 90 + Math.random() * 60
     });
   }
@@ -99,6 +114,7 @@ export function kisses(x, y, mult) {
 var BC = ["#F97316", "#34D399", "#FDFCF9", "#FB8B3C", "#E4B363", "#7DD3FC"];
 export function balloonRelease(x, y, mult) {
   if (!ctx) return;
+  readPaper();
   mult = mult || 1;
   var N = Math.min(16 * mult, 68);
   for (var i = 0; i < N; i++) {
@@ -106,7 +122,7 @@ export function balloonRelease(x, y, mult) {
       x: x + (Math.random() - .5) * (90 + mult * 14), y: y + Math.random() * 70,
       r: 16 + Math.random() * 13, vy: -(1.5 + Math.random() * 2.1),
       ph: Math.random() * 6.28, amp: 14 + Math.random() * 22,
-      c: BC[(Math.random() * BC.length) | 0], life: 0, spin: (Math.random() - .5) * .02
+      c: pick(BC), life: 0, spin: (Math.random() - .5) * .02
     });
   }
   ensure();

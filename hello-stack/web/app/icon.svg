@@ -1,0 +1,10 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="3.3 8.5 59.4 59.4" width="64" height="64">
+  <!-- the cube from the Stackdome lockup, cropped out of components/Wordmark.jsx.
+       amber rather than the page's ink, so it holds up on a light or dark tab strip -->
+  <rect opacity="0.25" width="30.588" height="30.588" rx="2" fill="#F97316"
+        transform="matrix(0.866025 -0.5 0.866025 0.5 6.48999 49.125)" />
+  <rect opacity="0.5" width="30.588" height="30.588" rx="2" fill="#F97316"
+        transform="matrix(0.866025 -0.5 0.866025 0.5 6.48999 38.135)" />
+  <rect width="30.588" height="30.588" rx="2" fill="#F97316"
+        transform="matrix(0.866025 -0.5 0.866025 0.5 6.48999 27.1453)" />
+</svg>
