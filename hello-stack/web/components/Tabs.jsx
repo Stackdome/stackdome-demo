@@ -13,7 +13,7 @@ export default function Tabs({ config }) {
       </div>
 
       <div className={'panel' + (tab === 0 ? ' sel' : '')}>
-        <p>Three containers. <b>web</b> serve page. <b>redis</b> hold queue. <b>worker</b> have no url — worker watch queue, worker do job.</p>
+        <p>Three containers. <b>web</b> serves this page, <b>redis</b> holds the queue, and <b>worker</b> takes jobs from it and does them. The worker has no URL of its own, on purpose.</p>
         <p>Pressing Celebrate runs no animation by itself. The button writes a job to redis, the worker grabs it, and every open browser sees the result. No job, no party.</p>
       </div>
 
@@ -29,12 +29,12 @@ export default function Tabs({ config }) {
           {'\n'}
           <span className="k">HEADLINE</span>={config.headline}{'\n'}
           {'\n'}
-          <span className="c"># optional — empty means this page&rsquo;s own address</span>{'\n'}
+          <span className="c"># optional. empty means this page&rsquo;s own address</span>{'\n'}
           <span className="k">PUBLIC_URL</span>={config.publicUrl}</pre>
         <ul className="steps">
           <li>Both containers read these at startup, so a redeploy is what applies them.</li>
           <li>Run <b>docker compose up -d --scale worker=3</b> and every job is claimed by a different worker.</li>
-          <li>Delete the worker container and press Celebrate — the jobs wait in redis until it comes back.</li>
+          <li>Delete the worker container and press Celebrate. The jobs wait in redis until it comes back.</li>
         </ul>
       </div>
     </div>
