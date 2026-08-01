@@ -111,10 +111,6 @@ button.go:focus-visible{outline:2px solid #FFD2AC;outline-offset:4px;}
      overflow-x:auto;white-space:pre;color:#B9C2CD;}
 .env .k{color:var(--amber);}
 .env .c{color:#39424F;}
-.steps{margin:0;padding:0;list-style:none;}
-.steps li{font-size:13px;line-height:1.65;color:var(--dim);padding-left:20px;position:relative;margin-bottom:8px;}
-.steps li::before{content:"→";position:absolute;left:0;color:var(--faint);font-family:"IBM Plex Mono",monospace;}
-.steps li:last-child{margin-bottom:0;}
 
 .mark{margin-bottom:14px !important;}
 .status{

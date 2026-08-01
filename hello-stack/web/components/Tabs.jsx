@@ -31,11 +31,6 @@ export default function Tabs({ config }) {
           {'\n'}
           <span className="c"># optional. empty means this page&rsquo;s own address</span>{'\n'}
           <span className="k">PUBLIC_URL</span>={config.publicUrl}</pre>
-        <ul className="steps">
-          <li>Both containers read these at startup, so a redeploy is what applies them.</li>
-          <li>Run <b>docker compose up -d --scale worker=3</b> and every job is claimed by a different worker.</li>
-          <li>Delete the worker container and press Celebrate. The jobs wait in redis until it comes back.</li>
-        </ul>
       </div>
     </div>
   );
