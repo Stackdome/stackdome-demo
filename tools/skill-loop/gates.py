@@ -5,8 +5,11 @@ verification contract the cheapest possible improvement, so a fast run that
 cannot prove it deployed anything must score as a failure, not a win.
 """
 
+import http.server
 import json
+import socket
 import sys
+import threading
 import urllib.error
 import urllib.request
 
@@ -95,6 +98,57 @@ def _self_test():
 
     nothing = {"stack": {}, "live_status": {}}
     assert len(evaluate_status(nothing)) >= 1
+
+    wrong_state = json_copy(good)
+    wrong_state["stack"]["converged_release"]["state"] = "Failed"
+    assert any("Released" in r for r in evaluate_status(wrong_state))
+
+    no_converged = json_copy(good)
+    del no_converged["stack"]["converged_release"]
+    assert any("no converged_release" in r for r in evaluate_status(no_converged))
+
+    no_latest = json_copy(good)
+    del no_latest["stack"]["latest_release"]
+    assert any("no latest_release" in r for r in evaluate_status(no_latest))
+
+    class _Handler(http.server.BaseHTTPRequestHandler):
+        def log_message(self, *args):
+            pass
+
+        def do_GET(self):
+            if self.path == "/ok":
+                body = b"hello"
+                self.send_response(200)
+                self.send_header("Content-Length", str(len(body)))
+                self.end_headers()
+                self.wfile.write(body)
+            elif self.path == "/empty":
+                self.send_response(200)
+                self.send_header("Content-Length", "0")
+                self.end_headers()
+            else:
+                self.send_response(500)
+                self.send_header("Content-Length", "0")
+                self.end_headers()
+
+    server = http.server.HTTPServer(("127.0.0.1", 0), _Handler)
+    port = server.server_address[1]
+    thread = threading.Thread(target=server.serve_forever, daemon=True)
+    thread.start()
+    try:
+        base = "http://127.0.0.1:%d" % port
+        assert check_url(base + "/ok") == []
+        assert len(check_url(base + "/missing")) >= 1
+        assert len(check_url(base + "/empty")) >= 1
+    finally:
+        server.shutdown()
+        thread.join()
+
+    closed = socket.socket()
+    closed.bind(("127.0.0.1", 0))
+    closed_port = closed.getsockname()[1]
+    closed.close()
+    assert len(check_url("http://127.0.0.1:%d/x" % closed_port)) >= 1
 
     print("gates: OK")
 
