@@ -1,0 +1,46 @@
+name: stackdome-demo
+resources:
+    redis:
+        image: redis:7-alpine
+        command:
+            - redis-server
+            - --appendonly
+            - "yes"
+        ports:
+            - name: tcp-6379
+              port: 6379
+              protocol: tcp
+        volumes:
+            - name: redis-data
+              path: /data
+        workload_type: Service
+    web:
+        image: quay.io/stackdome/hello-stack-web
+        command:
+            - node
+            - server.js
+        ports:
+            - name: http-3000
+              port: 3000
+              protocol: http
+              public: true
+        env:
+            CELEBRATION: lasers
+            HAT: crown
+            HEADLINE: Your stack is now live.
+            PUBLIC_URL: '{{ self.public_url }}'
+            REDIS_URL: '{{ redis.url }}'
+        depends_on:
+            - redis
+        workload_type: Service
+    worker:
+        image: quay.io/stackdome/hello-stack-worker
+        env:
+            CELEBRATION: lasers
+            REDIS_URL: '{{ redis.url }}'
+        depends_on:
+            - redis
+        workload_type: Service
+volumes:
+    redis-data:
+        size: 1Gi
