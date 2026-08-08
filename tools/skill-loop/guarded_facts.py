@@ -13,7 +13,7 @@ GUARDED = [
     # Invisible locally: localhost's /users/current/projects returns an empty
     # list so the CLI's fallback fires and the project resolves. Cloud returns
     # membership objects, the fallback misses, and commands exit 3.
-    ("project workaround", r"STACKDOME_PROJECT"),
+    ("project workaround", r"STACKDOME_PROJECT\s*=\s*default"),
     ("cloud host", r"stackdome\.io"),
     # Capabilities the deploy-path metric never exercises.
     ("build debugging", r"build\s+logs"),
@@ -52,10 +52,20 @@ def _self_test():
     present = "\n".join(pattern_example for _, pattern_example in EXAMPLES)
     assert check(present) == [], check(present)
 
-    missing = present.replace("STACKDOME_PROJECT", "XXX")
+    missing = present.replace("STACKDOME_PROJECT=default", "")
     failures = check(missing)
     assert len(failures) == 1, failures
-    assert "project" in failures[0].lower(), failures
+    assert "project workaround" in failures[0], failures
+
+    # Regression: prose that only warns users off STACKDOME_PROJECT (and its
+    # siblings) as an env var must NOT satisfy the guard — it is not the
+    # STACKDOME_PROJECT=default cloud project-resolution workaround.
+    env_var_prose = (
+        "STACKDOME_URL / STACKDOME_TOKEN / STACKDOME_ORG / STACKDOME_PROJECT "
+        "are the documented path for CI... they are the wrong tool for you"
+    )
+    env_var_failures = check(env_var_prose)
+    assert any("project workaround" in f for f in env_var_failures), env_var_failures
 
     assert check("") and len(check("")) == len(GUARDED)
     print("guarded_facts: OK")
