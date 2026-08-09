@@ -64,17 +64,12 @@ Probe everything at once:
 stackdome version; stackdome doctor -o json; ls stackfile.yaml 2>/dev/null
 ```
 
-Validate and deploy together — `deploy` takes no `--stack`:
+Validate and deploy together, once `validate` is expected to pass — same composite call as [Scale](#scale) (`stackdome validate && stackdome deploy --wait -o json`); that is its one canonical example, do not add a second.
+
+Verify a deploy in one call (substitute the stack name). Chained with `&&` so a failed `status` stops the sequence instead of `python3` throwing on a truncated file while `open` still runs and prints a URL next to the traceback:
 
 ```bash
-stackdome validate && stackdome deploy --wait -o json
-```
-
-Verify a deploy in one call (substitute the stack name):
-
-```bash
-stackdome status --stack <name> -o json > /tmp/st.json
-python3 -c "
+stackdome status --stack <name> -o json > /tmp/st.json && python3 -c "
 import json; d=json.load(open('/tmp/st.json'))
 s=d['stack']; c=s.get('converged_release') or {}; l=s.get('latest_release') or {}
 print('converged', c.get('id'), c.get('state'), c.get('health'))
@@ -82,9 +77,10 @@ print('latest   ', l.get('id'), l.get('state'))
 for n,r in (d['live_status'].get('resources') or {}).items():
     cs={x['type']:x['status'] for x in r.get('conditions',[])}
     print(n, 'Available=', cs.get('Available'), 'Converged=', cs.get('Converged'))
-"
-stackdome open web --stack <name> -o json
+" && stackdome open --stack <name> -o json
 ```
+
+`open` is called with no resource argument — it is optional and returns the stack's `{"target", "urls"}` either way; naming one resource (e.g. `web`) would exit `3` on any stack that doesn't happen to have one by that name.
 
 The last block gathers the evidence the [Verification contract](#verification-contract) requires — release ids, health, and per-resource conditions — in one call instead of several. Judge the printed values against that table before reporting success; batching the probe does not change what counts as success.
 
@@ -278,11 +274,15 @@ stackdome validate
 
 Loop until it passes. `validate` is the authority, not your memory of the schema — unknown keys are hard errors, so a typo fails here rather than silently doing nothing.
 
+Once you expect `validate` to pass, run it fused with the deploy step below as one call instead of two round-trips — see [Scale](#scale) for the exact composite command.
+
 A stackfile **describes and connects**. It never creates secrets or addons; those must already exist and are referenced by name. Create them first.
 
 ## Deploy
 
 No `stackfile.yaml` in the repo? [Author the stackfile](#author-the-stackfile) first — `deploy` exits `4` without one. Not authenticated? [Onboarding](#onboarding).
+
+Already validated, or expect it to pass? Fuse this with `validate` into one call instead of running them separately — see [Scale](#scale) for the exact composite command.
 
 ```bash
 stackdome deploy --wait -o json
@@ -301,6 +301,8 @@ Release states: `Pending`, `InProgress`, `Released`, `Failed`, `Superseded`, `Ca
 ```bash
 stackdome status -o json
 ```
+
+Gathering that alongside per-resource conditions and the public URL in one call? See [Batched commands](#batched-commands) for the composite form — same fields, judged against the same table below.
 
 Then read the result against this table. `R` is your retained release id.
 
