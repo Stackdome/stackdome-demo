@@ -18,11 +18,23 @@ Facts confirmed by direct observation. Trust these over inference; they cost
   self-signed default certificate and fail TLS verification.
 - **The CLI install URL in the docs 404s** — the release repo is private. Use
   `gh release download <tag> -R Stackdome/stackdome-cli -p '*_darwin_arm64.tar.gz'`,
-  then `install -m 755 stackdome ~/.local/bin/`.
-- **On Cloud, every command needs `STACKDOME_PROJECT=default`.** Without it the
-  CLI exits `3` with `Resource not found`, because `/users/current/projects`
-  returns membership objects the CLI decodes as empty projects
-  (stackdome-cli#7). Self-hosted instances are unaffected. Setting it also
+  then `tar -xzf *_darwin_arm64.tar.gz` and `install -m 755 stackdome ~/.local/bin/`.
+- **On Cloud, every command needs the inline `STACKDOME_PROJECT=default`
+  prefix.** This is narrower than [Authenticate](#authenticate)'s "don't use
+  env vars" guidance, which is about persisted auth state (`STACKDOME_URL` /
+  `STACKDOME_TOKEN` / `STACKDOME_ORG`) — `stackdome login` writes those to the
+  config file, so you never need them again after logging in.
+  `STACKDOME_PROJECT` is the one documented exception, and only on Cloud:
+  `/users/current/projects` there returns membership objects the CLI decodes
+  as an empty project name (stackdome-cli#7), so without the prefix every
+  command exits `3` with `Resource not found`. On a local/self-hosted
+  instance the server still returns the old empty-list shape, the CLI's
+  fallback fires, and the project resolves correctly — that asymmetry is why
+  a loop measured only against localhost would never observe this fact and
+  would strip it as dead weight. Until #7 ships, prefix every Cloud command:
+  `STACKDOME_PROJECT=default stackdome ...`. That does cost the
+  pre-approval [Authenticate](#authenticate) mentions for `stackdome`-prefixed
+  commands — a known, accepted trade, not an oversight. Setting it also
   disables persisted stack selection, so `--stack <name>` becomes mandatory on
   commands that take it.
 - **`deploy` has no `--stack` flag.** The stack name comes from `name:` in the
