@@ -224,10 +224,10 @@ curl -fsS -o /dev/null -w '%{http_code}' --max-time 10 http://<domain>/health
 
 10-second intervals, 30 attempts. Still not up? Read the log **once** — `ssh <target> 'tail -40 /tmp/stackdome-install.log'` — report what it says, and stop. A stalled install is a finding, not a reason to keep waiting.
 
-**4. Get a token.** Send them to `<url>/settings/api-tokens` to create one and paste it back. Do not name a minimum scope set — a guess that is too narrow produces an exit `2` they cannot diagnose. `stackdome token scopes` lists valid values if they ask. **Came from step 3?** That install has no TLS — it's plain HTTP (see the `curl http://<domain>/health` check above), so `login` needs `--insecure` or it refuses; skip that flag for Cloud or an existing HTTPS instance.
+**4. Get a token.** Send them to `<url>/settings/api-tokens` to create one and paste it back. Do not name a minimum scope set — a guess that is too narrow produces an exit `2` they cannot diagnose. `stackdome token scopes` lists valid values if they ask. **Is the URL `http://`, not `https://`?** (Step 3's own install has no TLS, but so can an existing instance — check the URL itself, not how you got here.) Add `--insecure` to `login` or it refuses; `https://` URLs never need it.
 
 ```bash
-stackdome login --url <url> --token <token>  # add --insecure for a plain-HTTP self-hosted instance (step 3 only)
+stackdome login --url <url> --token <token>  # add --insecure if <url> is http:// (never for https://)
 export STACKDOME_PROJECT=default  # Cloud only — omit on self-hosted to keep this pre-approved
 stackdome doctor -o json
 ```
@@ -239,7 +239,7 @@ Then go to [Author the stackfile](#author-the-stackfile), or [Deploy](#deploy) i
 **You never handle the user's password.** Interactive `login` and `signup` prompts need a real TTY, which your shell is not — `stackdome login` with neither `--token` nor both `--email` and `--password` exits `4` on non-interactive stdin.
 
 1. **Check first** — `stackdome whoami -o json`. Returns a user, org, project, and auth method? You are done. Run this before any change, to confirm which server you are about to act on. When it fails and you need to know *why*, `stackdome doctor -o json` separates an unreachable server from a dead token. **On Cloud, set `export STACKDOME_PROJECT=default` first for both** (see [Verified state](#verified-state-v002-alpha-checked-2026-08-09)) — self-hosted doesn't need it, and skipping it keeps the command pre-approved.
-2. **Log in with a token.** Ask the user for their instance URL, and for a token from `<instance-url>/settings/api-tokens`:
+2. **Log in with a token.** Ask the user for their instance URL, and for a token from `<instance-url>/settings/api-tokens` — add `--insecure` if the URL is `http://`, never for `https://`:
 
    ```bash
    stackdome login --url <instance-url> --token <token>
@@ -341,15 +341,15 @@ Gathering that alongside per-resource conditions and the public URL in one call?
 
 | What you see | What it means | What to do |
 |---|---|---|
-| `converged_release.id` == R, state `Released`, health `ok`, **and** `latest_release.id` == R with state `Released` | Deployed, healthy, newest | Confirm the URL from `open` returns HTTP `200` (`curl -fsS -o /dev/null -w '%{http_code}\n' --max-time 10 <url>`) — release state alone does not prove the app is serving. Then report success and give the user the URL |
+| `converged_release.id` == R, state `Released`, `live_status.health` `ok`, **and** `latest_release.id` == R with state `Released` | Deployed, healthy, newest | Confirm the URL from `open` returns HTTP `200` (`curl -fsS -o /dev/null -w '%{http_code}\n' --max-time 10 <url>`) — release state alone does not prove the app is serving. Then report success and give the user the URL |
 | `converged_release` is null or absent | First deploy, nothing converged yet | Poll — see cadence below |
 | `converged_release.id` != R, `latest_release.id` == R, latest state `Pending`/`InProgress` | Still rolling out; the old release is still serving | Poll |
-| `converged_release.id` == R, health `progressing` | Rolling out normally — not a failure | Poll |
-| `converged_release.id` == R, health `degraded` / `unavailable` / `failed` | Converged and broken | Do **not** report success. Go to [Debug](#debug) |
+| `converged_release.id` == R, `live_status.health` `progressing` | Rolling out normally — not a failure | Poll |
+| `converged_release.id` == R, `live_status.health` `degraded` / `unavailable` / `failed` | Converged and broken | Do **not** report success. Go to [Debug](#debug) |
 | `latest_release.id` != R | Someone else deployed after you; yours is superseded | Say so plainly. Do not report your deploy as live, and do not redeploy to "win" — ask |
 | `latest_release.id` == R, latest state `Failed` | Your release failed | Go to [Debug](#debug) |
 
-`health` is an enum — `ok`, `progressing`, `degraded`, `unavailable`, `failed`. Only `ok` is success and only `progressing` is worth waiting on; treating anything non-`ok` as broken reports a healthy rollout as a failure.
+`live_status.health` is an enum — `ok`, `progressing`, `degraded`, `unavailable`, `failed`. Only `ok` is success and only `progressing` is worth waiting on; treating anything non-`ok` as broken reports a healthy rollout as a failure.
 
 **Poll cadence:** `stackdome release info <release-id> -o json` every 10 seconds, up to 30 attempts (5 minutes). Still non-terminal after that? Stop polling and report the current state and the release id — a stuck release is a finding, not a reason to keep waiting silently. Never claim a deploy succeeded on a state you did not observe yourself.
 
