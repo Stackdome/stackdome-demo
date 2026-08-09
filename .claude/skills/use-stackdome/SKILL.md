@@ -157,10 +157,11 @@ stackdome doctor -o json; ls stackfile.yaml 2>/dev/null
 The CLI is one client of the REST API; the dashboard is another. Anything the UI can do, the API can do — a missing CLI command is a gap in the CLI, not a limit of the platform. `stackdome api` reaches any endpoint with the session you already have. Never hand-build a `curl` — it needs a token you would have to dig out of the config file, and the CLI redacts credentials from error output where a raw `curl` would not.
 
 1. https://docs.stackdome.com/llms.txt lists every endpoint by plain-English title, each linking to its own `.md` page. Read the one you need for the path, parameters, and body schema.
-2. `stackdome whoami -o json` fills the path parameters: `server_url`, `organization_id`, `project`, `current_stack`.
+2. `stackdome whoami -o json` fills the path parameters: `server_url`, `organization_id`, `project`, `current_stack`. On Cloud, prefix it (and step 3's calls) with `STACKDOME_PROJECT=default`; self-hosted doesn't need it.
 3. Send it:
 
    ```bash
+   export STACKDOME_PROJECT=default  # Cloud only — self-hosted doesn't need this
    stackdome api /api/v1/organizations/<organization_id>/... -o json
    stackdome api /api/v1/... -X PUT --data-file body.json --yes -o json
    ```
@@ -225,6 +226,7 @@ curl -fsS -o /dev/null -w '%{http_code}' --max-time 10 http://<domain>/health
 
 ```bash
 stackdome login --url <url> --token <token>
+export STACKDOME_PROJECT=default  # Cloud only — self-hosted doesn't need this
 stackdome doctor -o json
 ```
 
@@ -234,7 +236,7 @@ Then go to [Author the stackfile](#author-the-stackfile), or [Deploy](#deploy) i
 
 **You never handle the user's password.** Interactive `login` and `signup` prompts need a real TTY, which your shell is not — `stackdome login` with neither `--token` nor both `--email` and `--password` exits `4` on non-interactive stdin.
 
-1. **Check first** — `stackdome whoami -o json`. Returns a user, org, project, and auth method? You are done. Run this before any change, to confirm which server you are about to act on. When it fails and you need to know *why*, `stackdome doctor -o json` separates an unreachable server from a dead token.
+1. **Check first** — `stackdome whoami -o json`. Returns a user, org, project, and auth method? You are done. Run this before any change, to confirm which server you are about to act on. When it fails and you need to know *why*, `stackdome doctor -o json` separates an unreachable server from a dead token. **On Cloud, prefix both with `STACKDOME_PROJECT=default`** (see [Verified state](#verified-state-v002-alpha-checked-2026-08-09)) — self-hosted doesn't need it.
 2. **Log in with a token.** Ask the user for their instance URL, and for a token from `<instance-url>/settings/api-tokens`:
 
    ```bash
@@ -290,6 +292,7 @@ Any mutating API call in this section needs `--yes` per [Destructive operations]
 Never write `stackfile.yaml` from scratch.
 
 ```bash
+export STACKDOME_PROJECT=default  # Cloud only — self-hosted doesn't need this
 stackdome init
 ```
 
@@ -304,6 +307,7 @@ Full grammar: https://docs.stackdome.com/reference/stackfile.md; `stackdome stac
 Gate every edit:
 
 ```bash
+export STACKDOME_PROJECT=default  # Cloud only — self-hosted doesn't need this
 stackdome validate
 ```
 
@@ -314,6 +318,7 @@ Loop until it passes. `validate` is the authority, not your memory of the schema
 No `stackfile.yaml` in the repo? [Author the stackfile](#author-the-stackfile) first — `deploy` exits `4` without one. Not authenticated? [Onboarding](#onboarding). Already validated, or expect it to pass? Fuse this with `validate` into one call instead of running them separately — see [Scale](#scale) for the exact composite command.
 
 ```bash
+export STACKDOME_PROJECT=default  # Cloud only — self-hosted doesn't need this
 stackdome deploy --wait -o json
 ```
 
@@ -326,6 +331,7 @@ stackdome deploy --wait -o json
 `Released` proves the release converged at some point. It does not prove it is still serving, nor that it is the newest attempt. Run:
 
 ```bash
+export STACKDOME_PROJECT=default  # Cloud only — self-hosted doesn't need this
 stackdome status -o json
 ```
 
@@ -404,6 +410,7 @@ No `failure` on the resource? Route on release state instead:
 **Build failed** — three passes:
 
 ```bash
+export STACKDOME_PROJECT=default  # Cloud only — self-hosted doesn't need this
 stackdome build list --resource <name> -o json    # find the id
 stackdome build info <build-id> -o json           # structured evidence
 stackdome build logs <build-id> --tail 200        # the failing step
@@ -444,6 +451,7 @@ resources:
 ```
 
 ```bash
+export STACKDOME_PROJECT=default  # Cloud only — self-hosted doesn't need this
 stackdome validate && stackdome deploy --wait -o json
 ```
 
