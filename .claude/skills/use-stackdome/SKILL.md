@@ -54,6 +54,40 @@ This file carries the procedure — what to run, in what order, and how to tell 
 
 **Not everything is in the CLI.** Custom domains and preview-environment enablement have no CLI command yet. They are not out of reach — the CLI is one client of the REST API and the dashboard is another, so anything the UI can do, the API can do. See [When the CLI has no command](#when-the-cli-has-no-command). **Never invent a CLI command** — a plausible-looking guess exits `4` and wastes the user's time.
 
+### Batched commands
+
+Each of these is one tool call. Prefer them over running the parts separately.
+
+Probe everything at once:
+
+```bash
+stackdome version; stackdome doctor -o json; ls stackfile.yaml 2>/dev/null
+```
+
+Validate and deploy together — `deploy` takes no `--stack`:
+
+```bash
+stackdome validate && stackdome deploy --wait -o json
+```
+
+Verify a deploy in one call (substitute the stack name):
+
+```bash
+stackdome status --stack <name> -o json > /tmp/st.json
+python3 -c "
+import json; d=json.load(open('/tmp/st.json'))
+s=d['stack']; c=s.get('converged_release') or {}; l=s.get('latest_release') or {}
+print('converged', c.get('id'), c.get('state'), c.get('health'))
+print('latest   ', l.get('id'), l.get('state'))
+for n,r in (d['live_status'].get('resources') or {}).items():
+    cs={x['type']:x['status'] for x in r.get('conditions',[])}
+    print(n, 'Available=', cs.get('Available'), 'Converged=', cs.get('Converged'))
+"
+stackdome open web --stack <name> -o json
+```
+
+The last block gathers the evidence the [Verification contract](#verification-contract) requires — release ids, health, and per-resource conditions — in one call instead of several. Judge the printed values against that table before reporting success; batching the probe does not change what counts as success.
+
 ## Output contract
 
 `-o json|yaml` (default `table`) is global. With it, **stdout carries only the structured result**; prompts, progress, and warnings go to stderr. Parse stdout, keep stderr for diagnostics.
