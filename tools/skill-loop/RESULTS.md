@@ -18,6 +18,22 @@ correctness gates), then edit `SKILL.md` against that measurement rather than by
 
 **8 of 9 tasks are complete.** The measured baseline is **43 tool calls** (not 35 — see below).
 
+**The 43-call fixture is warm, not cold — a second reason 43 and 35 aren't the same measurement.**
+`run_iteration.sh` leaves `stackfile.yaml` on disk in the clone (`git rm --cached` untracks it, but
+never deletes the file) and pre-seeds `server_url`/`access_token`/`insecure` into the scoped auth
+config before the agent starts; the root `stackfile.yaml` is pure `image:` for every resource, with
+no `build:` step anywhere. The design spec
+(`docs/superpowers/specs/2026-08-09-stackdome-skill-speed-loop-design.md`) defines a cold run as
+"fresh machine, unauthenticated, no stackfile" — the plan's hand-counted **35** — and separately
+estimates warm runs (authenticated, stackfile present) at **2–3 calls**. This harness's fixture
+matches that warm definition, not the cold one 35 was counted against. So **43 is not comparable to
+the plan's cold 35**, and it should not be read against the spec's own 2–3-call warm estimate
+either without accounting for what else this fixture pre-seeds beyond auth+stackfile (prebuilt,
+already-correct-arch images; no build step required) — the gap between 43 and 2–3 is itself
+informative about remaining discovery cost on a warm run, not just noise to explain away. See
+`tools/skill-loop/baseline.json`'s `warm_fixture_caveat` field for the same note attached to the
+number directly.
+
 **Whether the SKILL.md edits actually reduced that number is UNMEASURED.** The plan called for a
 measurement step after Direction A and again after Direction C (keep-if-improved, revert
 otherwise). Both measurement steps were **skipped**, on the implementer's call, specifically to

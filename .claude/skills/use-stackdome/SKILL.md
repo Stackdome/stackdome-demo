@@ -66,15 +66,17 @@ Every step below except the version check sets `export STACKDOME_PROJECT=default
    stackdome status --stack <name> -o json > /tmp/st.json && python3 -c "
    import json; d=json.load(open('/tmp/st.json'))
    s=d['stack']; c=s.get('converged_release') or {}; l=s.get('latest_release') or {}
-   print('converged', c.get('id'), c.get('state'), c.get('health'))
+   live=d.get('live_status') or {}
+   print('converged', c.get('id'), c.get('state'))
    print('latest   ', l.get('id'), l.get('state'))
-   for n,r in (d['live_status'].get('resources') or {}).items():
+   print('health   ', live.get('health'))
+   for n,r in (live.get('resources') or {}).items():
        cs={x['type']:x['status'] for x in r.get('conditions',[])}
        print(n, 'Available=', cs.get('Available'), 'Converged=', cs.get('Converged'))
    " && stackdome open --stack <name> -o json
    ```
 
-   The `&&` chain stops the sequence on a failed `status` instead of letting `python3` throw on a truncated file while `open` still prints a URL next to the traceback. `open` takes no resource argument — naming one would exit `3` on a stack without one by that name.
+   The `&&` chain stops the sequence on a failed `status` instead of letting `python3` throw on a truncated file while `open` still prints a URL next to the traceback. `open`'s resource argument is optional — omitting it, as above, returns the whole stack's `{"target", "urls"}` in one call, which is why the batched form above doesn't name one.
 
    Then confirm the URL actually serves, using the `target` from `open`'s output:
 
@@ -82,7 +84,7 @@ Every step below except the version check sets `export STACKDOME_PROJECT=default
    curl -fsS -o /dev/null -w '%{http_code}\n' --max-time 10 <target>
    ```
 
-   **Report success only when every one of these holds:** `converged_release.id == R == latest_release.id`, both state `Released`, health `ok`, every resource `Available=true`/`Converged=true`, and the curl prints `200`. Any other combination — full decision table at [Verification contract](#verification-contract); a broken resource → [Debug](#debug).
+   **Report success only when every one of these holds:** `converged_release.id == R == latest_release.id`, both state `Released`, `live_status.health` is `ok`, every resource `Available=true`/`Converged=true`, and the curl prints `200`. Any other combination — full decision table at [Verification contract](#verification-contract); a broken resource → [Debug](#debug).
 
 Debugging, scaling, secrets, rollback, domains, previews, and everything else not on this path: [Reference](#reference), routed by the [table](#routing) at its top.
 
@@ -96,7 +98,7 @@ Facts confirmed by direct observation. Trust these over inference; they cost ~20
 - **The CLI install URL in the docs 404s** — the release repo is private. Use the verified `gh release download` steps in [Deploy this repo now](#deploy-this-repo-now) step 1.
 - **On Cloud, every project-scoped command needs `export STACKDOME_PROJECT=default` set first** — everything except `stackdome version` (no server call) and `stackdome login` (runs before project context exists). Narrower than [Authenticate](#authenticate)'s "don't use env vars" guidance, which covers persisted auth state (`STACKDOME_URL` / `STACKDOME_TOKEN` / `STACKDOME_ORG`) that `stackdome login` writes once. Root cause: Cloud's `/users/current/projects` returns membership objects the CLI decodes as an empty project name (stackdome-cli#7), so without it those commands exit `3` with `Resource not found`. On a local/self-hosted instance the server still returns the old empty-list shape, the CLI's fallback fires, and the project resolves correctly — **that asymmetry is why a loop measured only against localhost would never observe this fact and would strip it as dead weight.** Until #7 ships, set it before every such Cloud command: `export STACKDOME_PROJECT=default`. Cost: forfeits the `stackdome`-prefix pre-approval under `Bash(stackdome:*)` ([Authenticate](#authenticate)) and disables persisted stack selection, so `--stack <name>` becomes mandatory — self-hosted readers should drop the line rather than pay that cost for nothing.
 - **`deploy` has no `--stack` flag.** The stack name comes from `name:` in the stackfile. `status`, `open`, `logs`, and `release *` do take `--stack`.
-- **`status -o json` returns `{"stack": {...}, "live_status": {...}}`.** Release state is at `.stack.converged_release` / `.stack.latest_release`; per-resource readiness is at `.live_status.resources.<name>.conditions[]`, a map keyed by resource name, not a list.
+- **`status -o json` returns `{"stack": {...}, "live_status": {...}}`.** Release state is at `.stack.converged_release` / `.stack.latest_release`; overall health is at `.live_status.health` — not on `converged_release`, which carries no health field; per-resource readiness is at `.live_status.resources.<name>.conditions[]`, a map keyed by resource name, not a list.
 - **`open -o json` returns `{"target": "<url>", "urls": [...]}`.**
 - **Plain HTTP servers need `--insecure` on `login`**, or it refuses.
 - **Alpha scope: one organization, its default project, one connected cluster** — and no selector for any of them. **Do not present organization, project, or cluster as a deployment choice.** Cloud is ephemeral and capacity-limited; self-hosted uses the identical stackfile and CLI workflow.
@@ -222,10 +224,10 @@ curl -fsS -o /dev/null -w '%{http_code}' --max-time 10 http://<domain>/health
 
 10-second intervals, 30 attempts. Still not up? Read the log **once** — `ssh <target> 'tail -40 /tmp/stackdome-install.log'` — report what it says, and stop. A stalled install is a finding, not a reason to keep waiting.
 
-**4. Get a token.** Send them to `<url>/settings/api-tokens` to create one and paste it back. Do not name a minimum scope set — a guess that is too narrow produces an exit `2` they cannot diagnose. `stackdome token scopes` lists valid values if they ask.
+**4. Get a token.** Send them to `<url>/settings/api-tokens` to create one and paste it back. Do not name a minimum scope set — a guess that is too narrow produces an exit `2` they cannot diagnose. `stackdome token scopes` lists valid values if they ask. **Came from step 3?** That install has no TLS — it's plain HTTP (see the `curl http://<domain>/health` check above), so `login` needs `--insecure` or it refuses; skip that flag for Cloud or an existing HTTPS instance.
 
 ```bash
-stackdome login --url <url> --token <token>
+stackdome login --url <url> --token <token>  # add --insecure for a plain-HTTP self-hosted instance (step 3 only)
 export STACKDOME_PROJECT=default  # Cloud only — omit on self-hosted to keep this pre-approved
 stackdome doctor -o json
 ```

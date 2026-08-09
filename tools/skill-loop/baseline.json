@@ -2,6 +2,7 @@
   "tool_calls": 43,
   "session_id": "eed0d682-f38b-4076-84ed-ef05d132a324",
   "outcome": "gate_fail",
-  "note": "unmodified SKILL.md against local instance, measured (guarded facts expected to fail: Tasks 5/7 add them)",
+  "note": "unmodified SKILL.md against local instance, measured. outcome=gate_fail's cause is not separately recorded: run_iteration.sh sets outcome=gate_fail whenever gates.py fails OR guarded_facts.py fails (or both), and this baseline predates Tasks 5/7 adding the guarded facts, so a guarded_facts.py failure was expected — but gates.py's own pass/fail for this specific run is not independently confirmed from stored data. Treat the cause as unconfirmed, not as 'guarded facts alone'.",
+  "warm_fixture_caveat": "This fixture is WARM, not cold. run_iteration.sh leaves stackfile.yaml on disk (git rm --cached only, never deleted) and pre-seeds auth (server_url/access_token/insecure) into the scoped config before the agent starts; the root stackfile.yaml is pure image: for every resource, with no build: step. The design spec (docs/superpowers/specs/2026-08-09-stackdome-skill-speed-loop-design.md) defines a cold run as 'fresh machine, unauthenticated, no stackfile' and separately estimates warm runs (authenticated, stackfile present) at 2-3 calls. 43 is therefore NOT comparable to the plan's cold hand-counted 35, and should not be read against the spec's 2-3 warm estimate either without accounting for what this fixture pre-seeds beyond auth+stackfile (prebuilt images, no build step required).",
   "hand_counted_plan_baseline": 35
 }
