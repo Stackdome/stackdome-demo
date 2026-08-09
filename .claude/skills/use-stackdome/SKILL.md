@@ -81,46 +81,19 @@ Debugging, scaling, secrets, rollback, domains, previews, and everything else no
 
 ### Verified state (v0.0.2-alpha, checked 2026-08-09)
 
-Facts confirmed by direct observation. Trust these over inference; they cost
-~20 tool calls to rediscover.
+Facts confirmed by direct observation. Trust these over inference; they cost ~20 tool calls to rediscover.
 
-- **Cloud is `https://stackdome.io`.** `cloud.stackdome.com` does not resolve
-  (NXDOMAIN); `cloud.stackdome.io` and `app.stackdome.io` serve Traefik's
-  self-signed default certificate and fail TLS verification.
-- **The CLI install URL in the docs 404s** — the release repo is private. Use
-  `gh release download <tag> -R Stackdome/stackdome-cli -p '*_darwin_arm64.tar.gz'`,
-  then `tar -xzf *_darwin_arm64.tar.gz` and `install -m 755 stackdome ~/.local/bin/`.
-- **On Cloud, every command needs the inline `STACKDOME_PROJECT=default`
-  prefix.** Narrower than [Authenticate](#authenticate)'s "don't use env
-  vars" guidance — that covers persisted auth state (`STACKDOME_URL` /
-  `STACKDOME_TOKEN` / `STACKDOME_ORG`), which `stackdome login` writes to the
-  config file so you never need it again. `STACKDOME_PROJECT` is the one
-  documented exception, and only on Cloud: `/users/current/projects` there
-  returns membership objects the CLI decodes as an empty project name
-  (stackdome-cli#7), so without the prefix every command exits `3` with
-  `Resource not found`. Self-hosted is unaffected — the server returns the
-  old empty-list shape there and the CLI's fallback resolves the project
-  correctly. Until #7 ships: `STACKDOME_PROJECT=default stackdome ...` on
-  every Cloud command. Known, accepted cost: it forfeits the
-  `stackdome`-prefix pre-approval ([Authenticate](#authenticate)) and
-  disables persisted stack selection, so `--stack <name>` becomes mandatory
-  on commands that take it.
-- **`deploy` has no `--stack` flag.** The stack name comes from `name:` in the
-  stackfile. `status`, `open`, `logs`, and `release *` do take `--stack`.
-- **`status -o json` returns `{"stack": {...}, "live_status": {...}}`.** Release
-  state is at `.stack.converged_release` / `.stack.latest_release`; per-resource
-  readiness is at `.live_status.resources.<name>.conditions[]`, a map keyed by
-  resource name, not a list.
+- **Cloud is `https://stackdome.io`.** `cloud.stackdome.com` does not resolve (NXDOMAIN); `cloud.stackdome.io` and `app.stackdome.io` serve Traefik's self-signed default certificate and fail TLS verification.
+- **The CLI install URL in the docs 404s** — the release repo is private. Use the verified `gh release download` steps in [Deploy this repo now](#deploy-this-repo-now) step 1.
+- **On Cloud, every command needs the inline `STACKDOME_PROJECT=default` prefix** — narrower than [Authenticate](#authenticate)'s "don't use env vars" guidance, which covers persisted auth state (`STACKDOME_URL` / `STACKDOME_TOKEN` / `STACKDOME_ORG`) that `stackdome login` writes once. Root cause: Cloud's `/users/current/projects` returns membership objects the CLI decodes as an empty project name (stackdome-cli#7), so without the prefix every command exits `3` with `Resource not found`. Self-hosted is unaffected. Cost until #7 ships: forfeits the `stackdome`-prefix pre-approval ([Authenticate](#authenticate)) and disables persisted stack selection, so `--stack <name>` becomes mandatory.
+- **`deploy` has no `--stack` flag.** The stack name comes from `name:` in the stackfile. `status`, `open`, `logs`, and `release *` do take `--stack`.
+- **`status -o json` returns `{"stack": {...}, "live_status": {...}}`.** Release state is at `.stack.converged_release` / `.stack.latest_release`; per-resource readiness is at `.live_status.resources.<name>.conditions[]`, a map keyed by resource name, not a list.
 - **`open -o json` returns `{"target": "<url>", "urls": [...]}`.**
 - **Plain HTTP servers need `--insecure` on `login`**, or it refuses.
-- **Env values are literal.** `${VAR:-default}` from a compose file is not
-  interpolated; substitute real values. Cross-resource references use
-  `{{ <resource>.url }}` and `{{ self.public_url }}` — `stackdome init` does not
-  generate these, and a hardcoded `redis://redis:6379` is wrong.
+- **Alpha scope: one organization, its default project, one connected cluster** — and no selector for any of them. **Do not present organization, project, or cluster as a deployment choice.** Cloud is ephemeral and capacity-limited; self-hosted uses the identical stackfile and CLI workflow.
+- **Env values are literal.** `${VAR:-default}` from a compose file is not interpolated; substitute real values. Cross-resource references use `{{ <resource>.url }}` and `{{ self.public_url }}` — `stackdome init` does not generate these, and a hardcoded `redis://redis:6379` is wrong.
 
-This file carries the procedure — what to run, in what order, and how to tell whether it worked. It does not carry reference detail. When you need a flag, a schema, a full failure explanation, or an endpoint, fetch it: https://docs.stackdome.com/llms.txt indexes every docs page and every API endpoint, each as its own `.md`. Canonical agent guide: https://docs.stackdome.com/guides/ai-agents.md.
-
-**Not everything is in the CLI.** Custom domains and preview-environment enablement have no CLI command yet. They are not out of reach — the CLI is one client of the REST API and the dashboard is another, so anything the UI can do, the API can do. See [When the CLI has no command](#when-the-cli-has-no-command). **Never invent a CLI command** — a plausible-looking guess exits `4` and wastes the user's time.
+This file carries the procedure — what to run, in what order, and how to tell whether it worked. It does not carry reference detail. When you need a flag, a schema, a full failure explanation, or an endpoint, fetch it: https://docs.stackdome.com/llms.txt indexes every docs page and every API endpoint, each as its own `.md`. Canonical agent guide: https://docs.stackdome.com/guides/ai-agents.md. **Not everything is in the CLI** — custom domains and preview-environment enablement have no command yet. See [When the CLI has no command](#when-the-cli-has-no-command) for the API-first workaround. **Never invent a CLI command** — a plausible-looking guess exits `4` and wastes the user's time.
 
 #### Batched commands
 
@@ -130,23 +103,17 @@ Each of these is one tool call; prefer them over running the parts separately. T
 stackdome version; stackdome doctor -o json; ls stackfile.yaml 2>/dev/null
 ```
 
-`stackdome validate && stackdome deploy --wait -o json` — same composite call as [Scale](#scale); that is its one canonical example, do not add a second.
-
-The verify-and-open call chains with `&&` so a failed `status` stops the sequence, instead of `python3` throwing on a truncated file while `open` still runs and prints a URL next to the traceback. `open` takes no resource argument — it is optional and returns the stack's `{"target", "urls"}` either way; naming one resource (e.g. `web`) would exit `3` on any stack that doesn't happen to have one by that name. Judge the printed values against the [Verification contract](#verification-contract) table before reporting success — batching the probe does not change what counts as success.
+`stackdome validate && stackdome deploy --wait -o json` — same composite call as [Scale](#scale); that is its one canonical example, do not add a second. The `&&` chain stops the sequence on a failed `status` instead of letting `python3` throw on a truncated file while `open` still prints a URL next to the traceback. `open` takes no resource argument — omitting it returns the stack's `{"target", "urls"}` regardless; naming one resource would exit `3` on a stack without one by that name. Batching the probe doesn't change what counts as success — judge it against [Verification contract](#verification-contract).
 
 ### Output contract
 
-`-o json|yaml` (default `table`) is global. With it, **stdout carries only the structured result**; prompts, progress, and warnings go to stderr. Parse stdout, keep stderr for diagnostics.
-
-Three commands do not honour it. Assuming they do is the most common way to misreport state:
+`-o json|yaml` (default `table`) is global. With it, **stdout carries only the structured result**; prompts, progress, and warnings go to stderr. Parse stdout, keep stderr for diagnostics. Three commands do not honour it. Assuming they do is the most common way to misreport state:
 
 - `logs` writes raw application log lines to stdout — `-o json` does not wrap them in a schema.
 - `restart` emits no structured result at all.
 - `status --conditions` changes **table rendering only**. `status --conditions -o json` returns the same object as plain `status`, with no condition history. Read conditions in table mode.
 
-**Never use `--follow` or `--watch`.** You have no way to interrupt a running command, so anything that does not return on its own hangs your session. `status --watch` never returns — it is an unbounded refresh loop. `logs -f` follows a live process, so it returns only when that process stops. `build logs -f` and `release events -f` do end on their own, but not until the build or release reaches a terminal state, which can be many minutes of a blocked session. Poll with bounded reads instead: `--since 15m --tail 200`, run again for a newer window.
-
-Exit codes: `0` success, `1` general error, `2` auth/authorization, `3` not found, `4` invalid input or usage, `5` conflict, `130` canceled — including a confirmation the user declined.
+**Never use `--follow` or `--watch`.** You have no way to interrupt a running command, so anything that does not return on its own hangs your session. `status --watch` never returns — it is an unbounded refresh loop. `logs -f` follows a live process, so it returns only when that process stops. `build logs -f` and `release events -f` do end on their own, but not until the build or release reaches a terminal state, which can be many minutes of a blocked session. Poll with bounded reads instead: `--since 15m --tail 200`, run again for a newer window. Exit codes: `0` success, `1` general error, `2` auth/authorization, `3` not found, `4` invalid input or usage, `5` conflict, `130` canceled — including a confirmation the user declined.
 
 ### Routing
 
@@ -176,9 +143,7 @@ Exit codes: `0` success, `1` general error, `2` auth/authorization, `3` not foun
 
 ### When the CLI has no command
 
-The CLI is one client of the REST API; the dashboard is another. Anything the UI can do, the API can do — a missing CLI command is a gap in the CLI, not a limit of the platform.
-
-`stackdome api` reaches any endpoint with the session you already have. Never hand-build a `curl` — it needs a token you would have to dig out of the config file, and the CLI redacts credentials from error output where a raw `curl` would not.
+The CLI is one client of the REST API; the dashboard is another. Anything the UI can do, the API can do — a missing CLI command is a gap in the CLI, not a limit of the platform. `stackdome api` reaches any endpoint with the session you already have. Never hand-build a `curl` — it needs a token you would have to dig out of the config file, and the CLI redacts credentials from error output where a raw `curl` would not.
 
 1. https://docs.stackdome.com/llms.txt lists every endpoint by plain-English title, each linking to its own `.md` page. Read the one you need for the path, parameters, and body schema.
 2. `stackdome whoami -o json` fills the path parameters: `server_url`, `organization_id`, `project`, `current_stack`.
@@ -191,21 +156,11 @@ The CLI is one client of the REST API; the dashboard is another. Anything the UI
 
    `PATH` is relative and must start with `/api/` — the server URL comes from your context, so passing a full URL exits `4`. Flags: `-X` method (default `GET`), `--data` or `--data-file` for the body, `-H` for extra headers (repeatable), `--yes`.
 
-**Any mutating method needs `--yes`.** `POST`, `PUT`, `PATCH`, and `DELETE` prompt for confirmation, and you have no TTY — without the flag they exit `4` with `confirmation required`. That flag skips the CLI's prompt, not the user's: get the user's agreement first per [Destructive operations](#destructive-operations), then pass it.
-
-**`PUT` replaces the whole resource.** GET it, change the one field, PUT the complete object back. A partial body silently drops everything you omitted — a domains `PUT` built from just the new domain erases every existing one. Write the body to a file and use `--data-file`; `--data` on a long JSON string is where quoting goes wrong.
-
-[Destructive operations](#destructive-operations) applies to API writes exactly as it does to CLI commands. Nothing else about using the API needs announcing to the user.
-
-### Alpha scope
-
-One organization, its default project, one connected cluster — and no selector for any of them. **Do not present organization, project, or cluster as a deployment choice.** Cloud is ephemeral and capacity-limited; self-hosted uses the identical stackfile and CLI workflow.
+**Any mutating method needs `--yes`.** `POST`/`PUT`/`PATCH`/`DELETE` prompt for confirmation and you have no TTY — without the flag they exit `4` with `confirmation required`. That flag skips the CLI's prompt, not the user's: get the user's agreement first per [Destructive operations](#destructive-operations), then pass it. **`PUT` replaces the whole resource.** GET it, change the one field, PUT the complete object back — a partial body silently drops everything you omitted (e.g. a domains `PUT` built from just the new domain erases every existing one). Write the body to a file and use `--data-file`; `--data` on a long JSON string is where quoting goes wrong. [Destructive operations](#destructive-operations) applies to API writes exactly as it does to CLI commands. Nothing else about using the API needs announcing to the user.
 
 ### Onboarding
 
-Run this when `stackdome doctor -o json` reports a failing check, or the CLI is not installed. **Ask one question, then work.** Do not hand the user a checklist to work through — determine what you can yourself.
-
-`doctor` is the one call that separates the cases: it reports the CLI build, whether the server is reachable, whether auth is configured, and the current stack. A failing `server` check is a wrong or unreachable URL; a failing `auth` check is a missing or dead token. Exit is non-zero if any check fails, so read the payload rather than trusting the code alone.
+Run this when `stackdome doctor -o json` reports a failing check, or the CLI is not installed. **Ask one question, then work.** Do not hand the user a checklist to work through — determine what you can yourself. `doctor` is the one call that separates the cases: it reports the CLI build, whether the server is reachable, whether auth is configured, and the current stack. A failing `server` check is a wrong or unreachable URL; a failing `auth` check is a missing or dead token. Exit is non-zero if any check fails, so read the payload rather than trusting the code alone.
 
 **1. Is the CLI there?**
 
@@ -213,15 +168,7 @@ Run this when `stackdome doctor -o json` reports a failing check, or the CLI is 
 stackdome version
 ```
 
-Missing? It is a piped shell script, so get the user's go-ahead first, then:
-
-```bash
-curl -fsSL https://get.stackdome.com/cli | sh
-```
-
-**This URL 404s in practice** — the release repo is private. Use the verified
-`gh release download` steps in **Verified state** near the top of this file
-instead.
+Missing? The docs' piped-script install 404s (release repo is private) — get the user's go-ahead, then use the verified `gh release download` steps in [Deploy this repo now](#deploy-this-repo-now) step 1.
 
 **2. Ask where this deploys to.** This is the only question before work starts.
 
@@ -248,9 +195,7 @@ Needs Linux on `amd64`/`arm64`, root or passwordless sudo, ports 80/443/6443 fre
 - **`unknown` is not a pass.** Say which check could not run and let the user decide whether to go ahead. The installer's own port check treats an unavailable `ss` as "free"; do not inherit that, since the point of probing first is to avoid a failed install.
 - Anything other than Linux `amd64`/`arm64` is rejected by the installer outright. Say so and stop.
 
-`sudo -n true` is in the probe on purpose: a sudo password prompt over a non-TTY SSH hangs with no output at all.
-
-Confirm once, showing the literal command, then **detach** — a foreground install blocks the session for minutes with no way to interrupt it:
+`sudo -n true` is in the probe on purpose: a sudo password prompt over a non-TTY SSH hangs with no output at all. Confirm once, showing the literal command, then **detach** — a foreground install blocks the session for minutes with no way to interrupt it:
 
 ```bash
 ssh <target> 'nohup sh -c "curl -fsSL https://get.stackdome.com/install | sudo sh" \
@@ -288,35 +233,11 @@ Then go to [Author the stackfile](#author-the-stackfile), or [Deploy](#deploy) i
    This persists the credential, so every later command in every later shell is authenticated. Confirm with `stackdome whoami -o json`.
 3. **Exit code `2` later** — the token expired or was revoked. Ask for a new one and repeat step 2.
 
-Never ask for their password, and never offer to type it for them. `stackdome signup --url <instance-url>` is for a human at a terminal creating an account — hand it to them, do not drive it.
-
-**Why not environment variables:** `STACKDOME_URL` / `STACKDOME_TOKEN` / `STACKDOME_ORG` / `STACKDOME_PROJECT` are the documented path for CI, and they work there. They are the wrong tool for you: your shell does not persist state between commands, so an `export` in one call is gone by the next — and prefixing a command inline (`STACKDOME_TOKEN=… stackdome …`) makes it no longer start with `stackdome`, which forfeits the pre-approval that keeps `stackdome` commands from prompting. Mention them when writing a CI config; do not use them yourself.
-
-### Install the CLI
-
-Check first — this auto-approves and tells you whether there is anything to do:
-
-```bash
-stackdome version
-```
-
-Missing? The install is a piped shell script, so it needs the user's explicit go-ahead. Show them the line from https://docs.stackdome.com/get-started/cli and let them run it, or confirm before you do.
-
-**That docs URL 404s** — the release repo is private. Use the verified
-`gh release download` steps in **Verified state** near the top of this file
-instead.
+Never ask for their password, and never offer to type it for them. `stackdome signup --url <instance-url>` is for a human at a terminal creating an account — hand it to them, do not drive it. **Why not environment variables:** `STACKDOME_URL` / `STACKDOME_TOKEN` / `STACKDOME_ORG` / `STACKDOME_PROJECT` are the documented path for CI, and they work there. They are the wrong tool for you: your shell does not persist state between commands, so an `export` in one call is gone by the next — and prefixing a command inline (`STACKDOME_TOKEN=… stackdome …`) makes it no longer start with `stackdome`, which forfeits the pre-approval that keeps `stackdome` commands from prompting. Mention them when writing a CI config; do not use them yourself.
 
 ### Choose the source
 
-Do this before authoring the stackfile. **Infer first, ask only when the answer
-is genuinely unknown** — an unconditional question costs a round-trip on every
-deploy.
-
-```bash
-git remote -v 2>/dev/null | head -1
-gh repo view --json visibility -q .visibility 2>/dev/null
-ls Dockerfile */Dockerfile 2>/dev/null
-```
+Do this before authoring the stackfile. [Golden path step 2](#deploy-this-repo-now) already runs the `git remote`/`gh repo view` probe; add `ls Dockerfile */Dockerfile 2>/dev/null` if you haven't checked yet. **Infer first, ask only when the answer is genuinely unknown** — an unconditional question costs a round-trip on every deploy.
 
 | What you find | Take this path | Ask? |
 |---|---|---|
@@ -324,30 +245,21 @@ ls Dockerfile */Dockerfile 2>/dev/null
 | Remote exists, `PRIVATE` | Private repo | no — but the credential step is still required |
 | No remote, or no Dockerfile | Ask the user which of the four applies | yes |
 
-**Public repo.** Set `build.repo` to the HTTPS clone URL plus `branch:`. The
-`context:` is root-relative to the repository, not to your working directory —
-a compose `build: ./web` inside `hello-stack/` becomes `/hello-stack/web`.
+**Public repo.** Set `build.repo` to the HTTPS clone URL plus `branch:`. The `context:` is root-relative to the repository, not to your working directory — a compose `build: ./web` inside `hello-stack/` becomes `/hello-stack/web`.
 
-**Private repo.** The build needs an org-level git integration. There is no CLI
-command; use `stackdome api`. Create it, then **verify it before deploying** —
-one call that fails in seconds, versus a build failure minutes later whose
-message does not name the credential.
+**Private repo.** The build needs an org-level git integration. There is no CLI command; use `stackdome api`. Create it, then **verify it before deploying** — one call that fails in seconds, versus a build failure minutes later whose message does not name the credential.
 
 - [Create a git integration for the organization](https://docs.stackdome.com/api-reference/create-a-git-integration-for-the-organization.md)
 - [Verify a git integration against a repository](https://docs.stackdome.com/api-reference/verify-a-git-integration-against-a-repository.md)
 - [List repositories visible to the GitHub App installation](https://docs.stackdome.com/api-reference/list-repositories-visible-to-the-github-app-installation.md)
 
-**Existing image.** Public registry: reference it as `image:` and stop. Private
-registry: register a credential for that registry URL and verify it. Credentials
-resolve **implicitly by registry URL** — the stackfile needs no change and no
-credential reference.
+**Existing image.** Public registry: reference it as `image:` and stop. Private registry: register a credential for that registry URL and verify it. Credentials resolve **implicitly by registry URL** — the stackfile needs no change and no credential reference.
 
 - [Create a new image registry](https://docs.stackdome.com/api-reference/create-a-new-image-registry.md)
 - [Verify a registry credential against a repository](https://docs.stackdome.com/api-reference/verify-a-registry-credential-against-a-repository.md)
 - [List registry credentials for the organization](https://docs.stackdome.com/api-reference/list-registry-credentials-for-the-organization.md)
 
-**Local directory, no repo.** Build and push to `ttl.sh`, an anonymous ephemeral
-registry needing no account or credential:
+**Local directory, no repo.** Build and push to `ttl.sh`, an anonymous ephemeral registry needing no account or credential:
 
 ```bash
 IMG="ttl.sh/$(uuidgen | tr 'A-Z' 'a-z'):24h"
@@ -355,17 +267,12 @@ docker build --platform linux/amd64 -t "$IMG" .
 docker push "$IMG"
 ```
 
-Then reference `$IMG` as `image:` in the stackfile.
+Then reference `$IMG` as `image:` in the stackfile. Two things to tell the user, not discover:
 
-Two things to tell the user, not discover:
+- **`--platform linux/amd64` is mandatory.** Apple silicon builds arm64 by default; that image pushes cleanly and then fails on pull or crashes on start in an amd64 cluster, which looks like a broken app rather than a broken build.
+- **`ttl.sh` images expire — 24h is the maximum.** This is a demo and preview path. Anything meant to outlive a day needs a real registry or a git build.
 
-- **`--platform linux/amd64` is mandatory.** Apple silicon builds arm64 by
-  default; that image pushes cleanly and then fails on pull or crashes on start
-  in an amd64 cluster, which looks like a broken app rather than a broken build.
-- **`ttl.sh` images expire — 24h is the maximum.** This is a demo and preview
-  path. Anything meant to outlive a day needs a real registry or a git build.
-
-Any mutating API call needs `--yes`, and the user's agreement comes first.
+Any mutating API call in this section needs `--yes` per [Destructive operations](#destructive-operations).
 
 ### Author the stackfile
 
@@ -375,13 +282,11 @@ Never write `stackfile.yaml` from scratch.
 stackdome init
 ```
 
-- A `docker-compose.yaml` / `compose.yaml` is converted automatically. **Read its warnings.** The conversion cannot carry a local build path: a compose `build: ./web` must become a git repository URL with a root-relative context, or the deploy fails at build time. This is the single most common first-deploy failure. `env_file` handling also needs checking.
+- A `docker-compose.yaml` / `compose.yaml` is converted automatically. **Read its warnings** — the single most common first-deploy failure is a local `build:` path the conversion can't carry: it needs a git repository URL with a root-relative context (see [Choose the source](#choose-the-source)). `env_file` handling also needs checking.
 - `--file/-f <path>` points at a non-default compose file; `--force` overwrites an existing stackfile.
 - No compose file: you get a starter template. Fill it in from what the repo actually says — the Dockerfile, exposed ports, required env vars.
 
-Full grammar: https://docs.stackdome.com/reference/stackfile.md, or `stackdome stackfile schema` for the JSON Schema the installed CLI actually enforces. Prefer the schema when the two could disagree — the docs describe the current release, the schema describes the binary in front of you.
-
-Already have a stack on the server and want it in the repo? `stackdome stackfile export <stack>` writes back canonical stackfile content (`-o yaml` by default, `--output-file` to a path) instead of you reconstructing it by hand.
+Full grammar: https://docs.stackdome.com/reference/stackfile.md; `stackdome stackfile schema` gives the JSON Schema the installed CLI actually enforces — prefer it when the two disagree. Already have a stack on the server? `stackdome stackfile export <stack>` writes back canonical stackfile content (`-o yaml` by default, `--output-file` to a path) instead of you reconstructing it by hand.
 
 **Git sources** pin a revision per release. Use `branch:` or `tag:` (exactly one), optionally with `commit:`. Pin a commit for anything you need to redeploy identically later. **Pushing to git does not deploy** — there is no auto-deploy and no setting to enable one. Every release is one you asked for.
 
@@ -391,17 +296,11 @@ Gate every edit:
 stackdome validate
 ```
 
-Loop until it passes. `validate` is the authority, not your memory of the schema — unknown keys are hard errors, so a typo fails here rather than silently doing nothing.
-
-Once you expect `validate` to pass, run it fused with the deploy step below as one call instead of two round-trips — see [Scale](#scale) for the exact composite command.
-
-A stackfile **describes and connects**. It never creates secrets or addons; those must already exist and are referenced by name. Create them first.
+Loop until it passes. `validate` is the authority, not your memory of the schema — unknown keys are hard errors, so a typo fails here rather than silently doing nothing. Once you expect `validate` to pass, run it fused with the deploy step below as one call instead of two round-trips — see [Scale](#scale) for the exact composite command. A stackfile **describes and connects**. It never creates secrets or addons; those must already exist and are referenced by name. Create them first. Ask the user to commit `stackfile.yaml` once authored — it is the source of truth for the stack, including replica counts, workload types, and volume sizes.
 
 ### Deploy
 
-No `stackfile.yaml` in the repo? [Author the stackfile](#author-the-stackfile) first — `deploy` exits `4` without one. Not authenticated? [Onboarding](#onboarding).
-
-Already validated, or expect it to pass? Fuse this with `validate` into one call instead of running them separately — see [Scale](#scale) for the exact composite command.
+No `stackfile.yaml` in the repo? [Author the stackfile](#author-the-stackfile) first — `deploy` exits `4` without one. Not authenticated? [Onboarding](#onboarding). Already validated, or expect it to pass? Fuse this with `validate` into one call instead of running them separately — see [Scale](#scale) for the exact composite command.
 
 ```bash
 stackdome deploy --wait -o json
@@ -409,9 +308,7 @@ stackdome deploy --wait -o json
 
 `--wait/-w` follows the release to a terminal state and exits non-zero if it does not reach `Released`. Without it, `deploy` returns as soon as the release is created, while it is still `Pending` — a state read at that moment says nothing about the outcome. `--file/-f` (default `stackfile.yaml`) and `--name` select a non-default stackfile or stack name.
 
-**Retain `release.id` from the output.** Every check below needs it. If `deploy --wait` exits non-zero, the id is still in its output — use it to find out why rather than redeploying blind.
-
-Release states: `Pending`, `InProgress`, `Released`, `Failed`, `Superseded`, `Cancelled`. Terminal: `Released`, `Failed`, `Superseded`, `Cancelled`.
+**Retain `release.id` from the output.** Every check below needs it. If `deploy --wait` exits non-zero, the id is still in its output — use it to find out why rather than redeploying blind. Release states: `Pending`, `InProgress`, `Released`, `Failed`, `Superseded`, `Cancelled`. Terminal: `Released`, `Failed`, `Superseded`, `Cancelled`.
 
 #### Verification contract
 
@@ -421,9 +318,7 @@ Release states: `Pending`, `InProgress`, `Released`, `Failed`, `Superseded`, `Ca
 stackdome status -o json
 ```
 
-Gathering that alongside per-resource conditions and the public URL in one call? See [Batched commands](#batched-commands) for the composite form — same fields, judged against the same table below.
-
-Then read the result against this table. `R` is your retained release id.
+Gathering that alongside per-resource conditions and the public URL in one call? See [Batched commands](#batched-commands) for the composite form — same fields, judged against the same table below. Then read the result against this table. `R` is your retained release id.
 
 | What you see | What it means | What to do |
 |---|---|---|
@@ -437,9 +332,7 @@ Then read the result against this table. `R` is your retained release id.
 
 `health` is an enum — `ok`, `progressing`, `degraded`, `unavailable`, `failed`. Only `ok` is success and only `progressing` is worth waiting on; treating anything non-`ok` as broken reports a healthy rollout as a failure.
 
-**Poll cadence:** `stackdome release info <release-id> -o json` every 10 seconds, up to 30 attempts (5 minutes). Still non-terminal after that? Stop polling and report the current state and the release id — a stuck release is a finding, not a reason to keep waiting silently.
-
-Never claim a deploy succeeded on a state you did not observe yourself.
+**Poll cadence:** `stackdome release info <release-id> -o json` every 10 seconds, up to 30 attempts (5 minutes). Still non-terminal after that? Stop polling and report the current state and the release id — a stuck release is a finding, not a reason to keep waiting silently. Never claim a deploy succeeded on a state you did not observe yourself.
 
 ### Observe
 
@@ -458,9 +351,7 @@ Status proves platform health, not application correctness. A healthy release se
 
 `restart` exits once the API accepts the request. It does **not** wait for the replacement to be ready, and returns no structured output. A zero exit proves acceptance, nothing more.
 
-The trap: `stackdome status -o json` run immediately still describes the *old* process — `Released` and `ok` — while the replacement may already be crashlooping. A single healthy read right after a restart proves nothing.
-
-Verify by observing the transition:
+The trap: `stackdome status -o json` run immediately still describes the *old* process — `Released` and `ok` — while the replacement may already be crashlooping. A single healthy read right after a restart proves nothing. Verify by observing the transition:
 
 1. `stackdome status <resource> -o json` — wait for the resource to leave its ready state.
 2. Poll until it re-enters ready (10s intervals, same 5-minute ceiling as above).
@@ -507,11 +398,7 @@ stackdome build info <build-id> -o json           # structured evidence
 stackdome build logs <build-id> --tail 200        # the failing step
 ```
 
-From `build info`: `stack_resource_name`, `source_revision`, `build_context`, `status.state` (`Pending` | `Building` | `Success` | `Failed`), `status.conditions[]`, `status.last_build_failure_detail` (the `failure_type` table above), and `status.image_url` on success. The failure detail is best-effort and may be absent — the build log is the primary evidence for what the builder reported.
-
-Runtime logs may be empty when a deploy fails before the resource ever runs. That is a build problem, not a logging problem.
-
-Full guides: https://docs.stackdome.com/guides/build-failures.md and https://docs.stackdome.com/guides/status.md
+From `build info`: `stack_resource_name`, `source_revision`, `build_context`, `status.state` (`Pending` | `Building` | `Success` | `Failed`), `status.conditions[]`, `status.last_build_failure_detail` (the `failure_type` table above), and `status.image_url` on success. The failure detail is best-effort and may be absent — the build log is the primary evidence for what the builder reported. Runtime logs may be empty when a deploy fails before the resource ever runs — that is a build problem, not a logging problem. Full guides: https://docs.stackdome.com/guides/build-failures.md and https://docs.stackdome.com/guides/status.md
 
 ### Workload types
 
@@ -559,16 +446,12 @@ Verify per [Verification contract](#verification-contract).
 
 ### Public URLs, domains, and TLS
 
-To expose a resource: confirm the application's port from the repo or image, mark that port `public: true` in `stackfile.yaml`, validate, deploy, then `stackdome open <resource> -o json` for the URL. Verify release health and HTTPS afterwards.
-
-**Custom domains have no CLI command.** They live as a `domains[]` array on the organization, so both reading and changing them go through the API — see [When the CLI has no command](#when-the-cli-has-no-command).
+To expose a resource: confirm the application's port from the repo or image, mark that port `public: true` in `stackfile.yaml`, validate, deploy, then `stackdome open <resource> -o json` for the URL. Verify release health and HTTPS afterwards. **Custom domains have no CLI command.** They live as a `domains[]` array on the organization, so both reading and changing them go through the API — see [When the CLI has no command](#when-the-cli-has-no-command).
 
 - Read: [`GET` an organization](https://docs.stackdome.com/api-reference/get-an-organization.md)
-- Change: [`PUT` an organization](https://docs.stackdome.com/api-reference/update-an-organization.md) — **send the whole organization object**, with `domains[]` edited. A body containing only the new domain deletes every other one.
+- Change: [`PUT` an organization](https://docs.stackdome.com/api-reference/update-an-organization.md) with `domains[]` edited — whole-object rule applies (see the [PUT warning](#when-the-cli-has-no-command) above).
 
-DNS still points at the user; you cannot create records for them. Certificate issuance follows domain setup, so a missing certificate on an org with no domain is that, not a bug.
-
-Details: https://docs.stackdome.com/guides/domains-and-tls.md
+DNS still points at the user; you cannot create records for them. Certificate issuance follows domain setup, so a missing certificate on an org with no domain is that, not a bug. Details: https://docs.stackdome.com/guides/domains-and-tls.md
 
 ### Preview environments
 
@@ -580,9 +463,7 @@ Per-pull-request previews have **no CLI command**, but a full API — see [When 
 | Check whether they are enabled | [List preview configs](https://docs.stackdome.com/api-reference/preview-configs/list-preview-configs-for-a-project.md) |
 | See the previews that exist | [List preview stacks](https://docs.stackdome.com/api-reference/preview-stacks/list-preview-stacks-for-a-project.md) |
 
-Do the repo-side work first: author or update `stackfile.yaml` with the resources and public ports, and `stackdome validate` it to exit `0`. **`stackdome validate` passing does not mean previews are enabled** — check the preview config — and a plain `stackdome deploy` is not a preview. Do not describe either as one.
-
-Details: https://docs.stackdome.com/guides/preview-environments.md
+Do the repo-side work first: author or update `stackfile.yaml` with the resources and public ports, and `stackdome validate` it to exit `0`. **`stackdome validate` passing does not mean previews are enabled** — check the preview config — and a plain `stackdome deploy` is not a preview. Do not describe either as one. Details: https://docs.stackdome.com/guides/preview-environments.md
 
 ### Secrets and environment
 
@@ -596,11 +477,7 @@ Plain configuration goes in the stackfile's `env`. Anything sensitive is a secre
 | `stackdome secret set <name> --from-file <path>` | Replace values — the previous value is unrecoverable |
 | `stackdome secret delete <name>` | **Destructive** — see below |
 
-`--type`: `Generic` (default), `DockerRegistry`, `GitCredentials`, `UsernamePassword`, `Token`, `SSHKey`.
-
-**Use `--from-file`, not `--data KEY=VALUE`.** A value on the command line lands in the shell transcript and in your context. `--data` exists for a human at their own terminal; when you are handling the value, write it to a file the user provides or creates, pass the path, and never echo the value into your response, a log line, or a commit. This is the same rule as the password one — a secret you type is a secret you have leaked.
-
-`secret set` overwrites: the previous value cannot be recovered. Confirm before rotating something in use. Rotations take effect on the next deploy of the resources that consume it.
+`--type`: `Generic` (default), `DockerRegistry`, `GitCredentials`, `UsernamePassword`, `Token`, `SSHKey`. **Use `--from-file`, not `--data KEY=VALUE`.** A value on the command line lands in the shell transcript and in your context. `--data` exists for a human at their own terminal; when you are handling the value, write it to a file the user provides or creates, pass the path, and never echo the value into your response, a log line, or a commit. This is the same rule as the password one — a secret you type is a secret you have leaked. `secret set` overwrites: the previous value cannot be recovered. Confirm before rotating something in use. Rotations take effect on the next deploy of the resources that consume it.
 
 ### Databases and volumes
 
@@ -617,11 +494,7 @@ Plain configuration goes in the stackfile's `env`. Anything sensitive is a secre
 | `stackdome volume create <name> --size 5Gi` | Provision |
 | `stackdome volume delete <name>` | **Destructive** — see below |
 
-`addon postgres credentials` returns live database credentials. Treat the output as a secret: use it, never print it back.
-
-`volume create` takes `--access-mode`, but every volume Stackdome creates is `ReadWriteOnce`, and the mode **cannot be changed after creation**. Leave the default unless the user has a specific reason and knows it is fixed for the volume's life.
-
-An addon is managed by Stackdome. A database image declared as a resource in your stack is yours to operate and back up — do not describe the two as equivalent.
+`addon postgres credentials` returns live database credentials. Treat the output as a secret: use it, never print it back. `volume create` takes `--access-mode`, but every volume Stackdome creates is `ReadWriteOnce`, and the mode **cannot be changed after creation**. Leave the default unless the user has a specific reason and knows it is fixed for the volume's life. An addon is managed by Stackdome. A database image declared as a resource in your stack is yours to operate and back up — do not describe the two as equivalent.
 
 ### Releases and builds
 
@@ -640,11 +513,7 @@ An addon is managed by Stackdome. A database image declared as a resource in you
 
 **Roll back with `stackdome release rollback <release-id>`.** It takes the *old* release's id and copies that release's manifest into a new one — the same thing the dashboard's **⋮ → Rollback to this** does. Pass `--wait` to follow it to a terminal state; the default timeout is 10 minutes.
 
-A rollback is a new release, not a restored old one — it gets its own id and sequence. Retain that id and verify it through [Verification contract](#verification-contract) like any other deploy.
-
-A release pins what it deployed: a git source pins the commit, an image source pins the digest. `main` moving, or a tag being re-published, never changes an existing release — so the timeline is an honest record and a rollback is exact.
-
-Every `release` subcommand takes `--stack <name>`. Use full IDs from structured output when automating; ID prefixes are an interactive convenience.
+A rollback is a new release, not a restored old one — it gets its own id and sequence. Retain that id and verify it through [Verification contract](#verification-contract) like any other deploy. A release pins what it deployed: a git source pins the commit, an image source pins the digest. `main` moving, or a tag being re-published, never changes an existing release — so the timeline is an honest record and a rollback is exact. Every `release` subcommand takes `--stack <name>`. Use full IDs from structured output when automating; ID prefixes are an interactive convenience.
 
 ### Context and tokens
 
@@ -662,25 +531,17 @@ Every `release` subcommand takes `--stack <name>`. Use full IDs from structured 
 | `stackdome token scopes` | Valid `--scope` values |
 | `stackdome token delete <id>` | **Destructive** — see below |
 
-`token create` returns a live credential shown once. Hand it to the user; do not echo it into a summary or write it to a tracked file.
-
-Most commands take `--stack/-s <name>` to target a stack other than the current context.
+`token create` returns a live credential shown once. Hand it to the user; do not echo it into a summary or write it to a tracked file. Most commands take `--stack/-s <name>` to target a stack other than the current context.
 
 ### Destructive operations
 
 **Never pass `-y`/`--yes` before the user has confirmed that specific action.** Exit code `130` means they declined at the prompt — that is an answer. Do not re-run with `-y`, do not rephrase and retry, do not route around it with a different shell or script. Surface the decline and stop.
 
-`destroy`, `stack delete`, `secret delete`, `volume delete`, `addon postgres delete`, and `token delete` are **irreversible**. The stack, credential, storage, or database behind them cannot be recovered. `secret set` and `release cancel` are also unrecoverable in effect, and need the same confirmation.
-
-Before running any of them:
+`destroy`, `stack delete`, `secret delete`, `volume delete`, `addon postgres delete`, and `token delete` are **irreversible**. The stack, credential, storage, or database behind them cannot be recovered. `secret set` and `release cancel` are also unrecoverable in effect, and need the same confirmation. Before running any of them:
 
 1. Name exactly what will be lost — which stack, secret, volume, database, or token — and say plainly that it cannot be undone.
 2. Get explicit confirmation for that specific action. Not for "cleaning up", not implied by an earlier instruction.
 3. Only then run it, adding `-y` so it can complete without a TTY prompt you cannot answer.
-
-### Persisting context
-
-Ask the user to commit `stackfile.yaml` — it is the source of truth for the stack, including replica counts, workload types, and volume sizes.
 
 ### Anything else
 
