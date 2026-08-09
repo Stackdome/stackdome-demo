@@ -169,6 +169,10 @@ Missing? It is a piped shell script, so get the user's go-ahead first, then:
 curl -fsSL https://get.stackdome.com/cli | sh
 ```
 
+**This URL 404s in practice** — the release repo is private. Use the verified
+`gh release download` steps in **Verified state** near the top of this file
+instead.
+
 **2. Ask where this deploys to.** This is the only question before work starts.
 
 | They say | Do |
@@ -247,6 +251,71 @@ stackdome version
 ```
 
 Missing? The install is a piped shell script, so it needs the user's explicit go-ahead. Show them the line from https://docs.stackdome.com/get-started/cli and let them run it, or confirm before you do.
+
+**That docs URL 404s** — the release repo is private. Use the verified
+`gh release download` steps in **Verified state** near the top of this file
+instead.
+
+## Choose the source
+
+Do this before authoring the stackfile. **Infer first, ask only when the answer
+is genuinely unknown** — an unconditional question costs a round-trip on every
+deploy.
+
+```bash
+git remote -v 2>/dev/null | head -1
+gh repo view --json visibility -q .visibility 2>/dev/null
+ls Dockerfile */Dockerfile 2>/dev/null
+```
+
+| What you find | Take this path | Ask? |
+|---|---|---|
+| Remote exists, `PUBLIC` | Public repo | no |
+| Remote exists, `PRIVATE` | Private repo | no — but the credential step is still required |
+| No remote, or no Dockerfile | Ask the user which of the four applies | yes |
+
+**Public repo.** Set `build.repo` to the HTTPS clone URL plus `branch:`. The
+`context:` is root-relative to the repository, not to your working directory —
+a compose `build: ./web` inside `hello-stack/` becomes `/hello-stack/web`.
+
+**Private repo.** The build needs an org-level git integration. There is no CLI
+command; use `stackdome api`. Create it, then **verify it before deploying** —
+one call that fails in seconds, versus a build failure minutes later whose
+message does not name the credential.
+
+- [Create a git integration for the organization](https://docs.stackdome.com/api-reference/create-a-git-integration-for-the-organization.md)
+- [Verify a git integration against a repository](https://docs.stackdome.com/api-reference/verify-a-git-integration-against-a-repository.md)
+- [List repositories visible to the GitHub App installation](https://docs.stackdome.com/api-reference/list-repositories-visible-to-the-github-app-installation.md)
+
+**Existing image.** Public registry: reference it as `image:` and stop. Private
+registry: register a credential for that registry URL and verify it. Credentials
+resolve **implicitly by registry URL** — the stackfile needs no change and no
+credential reference.
+
+- [Create a new image registry](https://docs.stackdome.com/api-reference/create-a-new-image-registry.md)
+- [Verify a registry credential against a repository](https://docs.stackdome.com/api-reference/verify-a-registry-credential-against-a-repository.md)
+- [List registry credentials for the organization](https://docs.stackdome.com/api-reference/list-registry-credentials-for-the-organization.md)
+
+**Local directory, no repo.** Build and push to `ttl.sh`, an anonymous ephemeral
+registry needing no account or credential:
+
+```bash
+IMG="ttl.sh/$(uuidgen | tr 'A-Z' 'a-z'):24h"
+docker build --platform linux/amd64 -t "$IMG" .
+docker push "$IMG"
+```
+
+Then reference `$IMG` as `image:` in the stackfile.
+
+Two things to tell the user, not discover:
+
+- **`--platform linux/amd64` is mandatory.** Apple silicon builds arm64 by
+  default; that image pushes cleanly and then fails on pull or crashes on start
+  in an amd64 cluster, which looks like a broken app rather than a broken build.
+- **`ttl.sh` images expire — 24h is the maximum.** This is a demo and preview
+  path. Anything meant to outlive a day needs a real registry or a git build.
+
+Any mutating API call needs `--yes`, and the user's agreement comes first.
 
 ## Author the stackfile
 
