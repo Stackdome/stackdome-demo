@@ -12,13 +12,13 @@ Stackdome is an application-delivery platform. You drive it through the `stackdo
 
 Zero-to-URL for the common case: a git-hosted repo, checked out locally, no persisted Stackdome auth yet, targeting Stackdome Cloud (the default target for this path). Forks to [Reference](#reference) only where the path branches (private repo, self-hosted target, no git remote, existing image).
 
-Every step below prefixes `stackdome` calls with `export STACKDOME_PROJECT=default` — Cloud needs it, or every command below exits `3` with `Resource not found` (see [Verified state](#verified-state-v002-alpha-checked-2026-08-09) for why). **Targeting self-hosted instead? Drop that `export` line — self-hosted does not need it and should not have it forced.**
+Every step below except the version check sets `export STACKDOME_PROJECT=default` before its `stackdome` calls — Cloud needs it, or those commands exit `3` with `Resource not found` (see [Verified state](#verified-state-v002-alpha-checked-2026-08-09) for why). **Targeting self-hosted instead? Each step marks that line — drop it there. Self-hosted does not need it, and dropping it is what keeps the command matching `Bash(stackdome:*)` and pre-approved; leaving it in forces a permission prompt for nothing.**
 
 1. **CLI + auth, one call:**
 
    ```bash
    stackdome version
-   export STACKDOME_PROJECT=default
+   export STACKDOME_PROJECT=default  # Cloud only — omit on self-hosted to keep this pre-approved
    stackdome doctor -o json
    ```
 
@@ -43,7 +43,7 @@ Every step below prefixes `stackdome` calls with `export STACKDOME_PROJECT=defau
 3. **Generate and gate the stackfile:**
 
    ```bash
-   export STACKDOME_PROJECT=default
+   export STACKDOME_PROJECT=default  # Cloud only — omit on self-hosted to keep this pre-approved
    stackdome init
    stackdome validate
    ```
@@ -53,7 +53,7 @@ Every step below prefixes `stackdome` calls with `export STACKDOME_PROJECT=defau
 4. **Deploy — validate and deploy fused into one call:**
 
    ```bash
-   export STACKDOME_PROJECT=default
+   export STACKDOME_PROJECT=default  # Cloud only — omit on self-hosted to keep this pre-approved
    stackdome validate && stackdome deploy --wait -o json
    ```
 
@@ -62,7 +62,7 @@ Every step below prefixes `stackdome` calls with `export STACKDOME_PROJECT=defau
 5. **Verify — one batched call**, substituting the stack name:
 
    ```bash
-   export STACKDOME_PROJECT=default
+   export STACKDOME_PROJECT=default  # Cloud only — omit on self-hosted to keep this pre-approved
    stackdome status --stack <name> -o json > /tmp/st.json && python3 -c "
    import json; d=json.load(open('/tmp/st.json'))
    s=d['stack']; c=s.get('converged_release') or {}; l=s.get('latest_release') or {}
@@ -94,7 +94,7 @@ Facts confirmed by direct observation. Trust these over inference; they cost ~20
 
 - **Cloud is `https://stackdome.io`.** `cloud.stackdome.com` does not resolve (NXDOMAIN); `cloud.stackdome.io` and `app.stackdome.io` serve Traefik's self-signed default certificate and fail TLS verification.
 - **The CLI install URL in the docs 404s** — the release repo is private. Use the verified `gh release download` steps in [Deploy this repo now](#deploy-this-repo-now) step 1.
-- **On Cloud, every command needs the inline `STACKDOME_PROJECT=default` prefix** — narrower than [Authenticate](#authenticate)'s "don't use env vars" guidance, which covers persisted auth state (`STACKDOME_URL` / `STACKDOME_TOKEN` / `STACKDOME_ORG`) that `stackdome login` writes once. Root cause: Cloud's `/users/current/projects` returns membership objects the CLI decodes as an empty project name (stackdome-cli#7), so without the prefix every command exits `3` with `Resource not found`. On a local/self-hosted instance the server still returns the old empty-list shape, the CLI's fallback fires, and the project resolves correctly — **that asymmetry is why a loop measured only against localhost would never observe this fact and would strip it as dead weight.** Until #7 ships, prefix every Cloud command: `STACKDOME_PROJECT=default stackdome ...`. Cost: forfeits the `stackdome`-prefix pre-approval ([Authenticate](#authenticate)) and disables persisted stack selection, so `--stack <name>` becomes mandatory.
+- **On Cloud, every project-scoped command needs `export STACKDOME_PROJECT=default` set first** — everything except `stackdome version` (no server call) and `stackdome login` (runs before project context exists). Narrower than [Authenticate](#authenticate)'s "don't use env vars" guidance, which covers persisted auth state (`STACKDOME_URL` / `STACKDOME_TOKEN` / `STACKDOME_ORG`) that `stackdome login` writes once. Root cause: Cloud's `/users/current/projects` returns membership objects the CLI decodes as an empty project name (stackdome-cli#7), so without it those commands exit `3` with `Resource not found`. On a local/self-hosted instance the server still returns the old empty-list shape, the CLI's fallback fires, and the project resolves correctly — **that asymmetry is why a loop measured only against localhost would never observe this fact and would strip it as dead weight.** Until #7 ships, set it before every such Cloud command: `export STACKDOME_PROJECT=default`. Cost: forfeits the `stackdome`-prefix pre-approval under `Bash(stackdome:*)` ([Authenticate](#authenticate)) and disables persisted stack selection, so `--stack <name>` becomes mandatory — self-hosted readers should drop the line rather than pay that cost for nothing.
 - **`deploy` has no `--stack` flag.** The stack name comes from `name:` in the stackfile. `status`, `open`, `logs`, and `release *` do take `--stack`.
 - **`status -o json` returns `{"stack": {...}, "live_status": {...}}`.** Release state is at `.stack.converged_release` / `.stack.latest_release`; per-resource readiness is at `.live_status.resources.<name>.conditions[]`, a map keyed by resource name, not a list.
 - **`open -o json` returns `{"target": "<url>", "urls": [...]}`.**
@@ -110,11 +110,11 @@ Each of these is one tool call; prefer them over running the parts separately. T
 
 ```bash
 stackdome version
-export STACKDOME_PROJECT=default
+export STACKDOME_PROJECT=default  # Cloud only — omit on self-hosted to keep this pre-approved
 stackdome doctor -o json; ls stackfile.yaml 2>/dev/null
 ```
 
-`STACKDOME_PROJECT=default stackdome validate && stackdome deploy --wait -o json` — same call as golden-path step 4, also shown at [Scale](#scale). Batching the probe doesn't change what counts as success — judge it against [Verification contract](#verification-contract).
+`stackdome validate && stackdome deploy --wait -o json` — same call as golden-path step 4 (with its `export STACKDOME_PROJECT=default` for Cloud), also shown at [Scale](#scale). Batching the probe doesn't change what counts as success — judge it against [Verification contract](#verification-contract).
 
 ### Output contract
 
@@ -157,11 +157,11 @@ stackdome doctor -o json; ls stackfile.yaml 2>/dev/null
 The CLI is one client of the REST API; the dashboard is another. Anything the UI can do, the API can do — a missing CLI command is a gap in the CLI, not a limit of the platform. `stackdome api` reaches any endpoint with the session you already have. Never hand-build a `curl` — it needs a token you would have to dig out of the config file, and the CLI redacts credentials from error output where a raw `curl` would not.
 
 1. https://docs.stackdome.com/llms.txt lists every endpoint by plain-English title, each linking to its own `.md` page. Read the one you need for the path, parameters, and body schema.
-2. `stackdome whoami -o json` fills the path parameters: `server_url`, `organization_id`, `project`, `current_stack`. On Cloud, prefix it (and step 3's calls) with `STACKDOME_PROJECT=default`; self-hosted doesn't need it.
+2. `stackdome whoami -o json` fills the path parameters: `server_url`, `organization_id`, `project`, `current_stack`. On Cloud, set `export STACKDOME_PROJECT=default` first for it (and step 3's calls) — self-hosted doesn't need it, and skipping it there keeps the command pre-approved.
 3. Send it:
 
    ```bash
-   export STACKDOME_PROJECT=default  # Cloud only — self-hosted doesn't need this
+   export STACKDOME_PROJECT=default  # Cloud only — omit on self-hosted to keep this pre-approved
    stackdome api /api/v1/organizations/<organization_id>/... -o json
    stackdome api /api/v1/... -X PUT --data-file body.json --yes -o json
    ```
@@ -226,7 +226,7 @@ curl -fsS -o /dev/null -w '%{http_code}' --max-time 10 http://<domain>/health
 
 ```bash
 stackdome login --url <url> --token <token>
-export STACKDOME_PROJECT=default  # Cloud only — self-hosted doesn't need this
+export STACKDOME_PROJECT=default  # Cloud only — omit on self-hosted to keep this pre-approved
 stackdome doctor -o json
 ```
 
@@ -236,7 +236,7 @@ Then go to [Author the stackfile](#author-the-stackfile), or [Deploy](#deploy) i
 
 **You never handle the user's password.** Interactive `login` and `signup` prompts need a real TTY, which your shell is not — `stackdome login` with neither `--token` nor both `--email` and `--password` exits `4` on non-interactive stdin.
 
-1. **Check first** — `stackdome whoami -o json`. Returns a user, org, project, and auth method? You are done. Run this before any change, to confirm which server you are about to act on. When it fails and you need to know *why*, `stackdome doctor -o json` separates an unreachable server from a dead token. **On Cloud, prefix both with `STACKDOME_PROJECT=default`** (see [Verified state](#verified-state-v002-alpha-checked-2026-08-09)) — self-hosted doesn't need it.
+1. **Check first** — `stackdome whoami -o json`. Returns a user, org, project, and auth method? You are done. Run this before any change, to confirm which server you are about to act on. When it fails and you need to know *why*, `stackdome doctor -o json` separates an unreachable server from a dead token. **On Cloud, set `export STACKDOME_PROJECT=default` first for both** (see [Verified state](#verified-state-v002-alpha-checked-2026-08-09)) — self-hosted doesn't need it, and skipping it keeps the command pre-approved.
 2. **Log in with a token.** Ask the user for their instance URL, and for a token from `<instance-url>/settings/api-tokens`:
 
    ```bash
@@ -292,7 +292,7 @@ Any mutating API call in this section needs `--yes` per [Destructive operations]
 Never write `stackfile.yaml` from scratch.
 
 ```bash
-export STACKDOME_PROJECT=default  # Cloud only — self-hosted doesn't need this
+export STACKDOME_PROJECT=default  # Cloud only — omit on self-hosted to keep this pre-approved
 stackdome init
 ```
 
@@ -307,7 +307,7 @@ Full grammar: https://docs.stackdome.com/reference/stackfile.md; `stackdome stac
 Gate every edit:
 
 ```bash
-export STACKDOME_PROJECT=default  # Cloud only — self-hosted doesn't need this
+export STACKDOME_PROJECT=default  # Cloud only — omit on self-hosted to keep this pre-approved
 stackdome validate
 ```
 
@@ -318,7 +318,7 @@ Loop until it passes. `validate` is the authority, not your memory of the schema
 No `stackfile.yaml` in the repo? [Author the stackfile](#author-the-stackfile) first — `deploy` exits `4` without one. Not authenticated? [Onboarding](#onboarding). Already validated, or expect it to pass? Fuse this with `validate` into one call instead of running them separately — see [Scale](#scale) for the exact composite command.
 
 ```bash
-export STACKDOME_PROJECT=default  # Cloud only — self-hosted doesn't need this
+export STACKDOME_PROJECT=default  # Cloud only — omit on self-hosted to keep this pre-approved
 stackdome deploy --wait -o json
 ```
 
@@ -331,7 +331,7 @@ stackdome deploy --wait -o json
 `Released` proves the release converged at some point. It does not prove it is still serving, nor that it is the newest attempt. Run:
 
 ```bash
-export STACKDOME_PROJECT=default  # Cloud only — self-hosted doesn't need this
+export STACKDOME_PROJECT=default  # Cloud only — omit on self-hosted to keep this pre-approved
 stackdome status -o json
 ```
 
@@ -410,7 +410,7 @@ No `failure` on the resource? Route on release state instead:
 **Build failed** — three passes:
 
 ```bash
-export STACKDOME_PROJECT=default  # Cloud only — self-hosted doesn't need this
+export STACKDOME_PROJECT=default  # Cloud only — omit on self-hosted to keep this pre-approved
 stackdome build list --resource <name> -o json    # find the id
 stackdome build info <build-id> -o json           # structured evidence
 stackdome build logs <build-id> --tail 200        # the failing step
@@ -451,7 +451,7 @@ resources:
 ```
 
 ```bash
-export STACKDOME_PROJECT=default  # Cloud only — self-hosted doesn't need this
+export STACKDOME_PROJECT=default  # Cloud only — omit on self-hosted to keep this pre-approved
 stackdome validate && stackdome deploy --wait -o json
 ```
 
