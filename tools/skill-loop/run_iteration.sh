@@ -6,9 +6,19 @@
 # the agent's tool calls, gates the result, then destroys the stack.
 #
 # Usage: run_iteration.sh <label>
+#
+# set -e is deliberately NOT used: the row-writing tail (write_row, called
+# from the EXIT trap) must run on every path, including a gate failure or a
+# `claude -p` timeout — an early `set -e` abort would skip it. Explicit
+# `|| exit 1` guards cover the setup steps that must not be allowed to
+# silently continue instead.
 set -uo pipefail
 
 LABEL="${1:?usage: run_iteration.sh <label>}"
+if ! [[ "$LABEL" =~ ^[A-Za-z0-9][A-Za-z0-9_-]*$ ]]; then
+  echo "usage: run_iteration.sh <label> — label must match ^[A-Za-z0-9][A-Za-z0-9_-]*\$" >&2
+  exit 1
+fi
 REPO_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
 
 # 1800s (not the brief's 900s): a real diagnostic run was killed by the 900s
@@ -17,9 +27,12 @@ REPO_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
 TIMEOUT_SECS=1800
 
 WORK="$(mktemp -d "/tmp/sd-loop-${LABEL}-XXXXXX")"
+[ -n "$WORK" ] || { echo "mktemp failed" >&2; exit 1; }
 # Resolve symlinks (macOS: /tmp -> /private/tmp) so this matches the cwd
 # Claude Code records for the session transcript path count_calls.py looks up.
 WORK="$(cd "$WORK" && pwd -P)"
+[ -n "$WORK" ] || { echo "failed to resolve work dir" >&2; exit 1; }
+
 # STACK is derived from the resolved work-dir basename (label + mktemp's
 # random suffix, lowercased), not just the label: the brief's literal
 # STACK="sd-loop-${LABEL}" has no per-run suffix, so two iterations sharing a
@@ -29,23 +42,119 @@ WORK="$(cd "$WORK" && pwd -P)"
 # mktemp suffix) desyncs count_calls.py's naive slug (which only replaces
 # "/") from the real transcript directory.
 STACK="$(basename "$WORK" | tr 'A-Z' 'a-z')"
+# Belt and braces: if mktemp somehow produced an empty/unexpected WORK
+# despite the guard above, refuse rather than let a downstream `destroy
+# --stack "."` or similar fire on an unintended name — the same failure
+# class that already pushed a real pre-existing stack (stackdome-demo) to a
+# new release earlier in this task.
+case "$STACK" in
+  sd-loop-*) ;;
+  *) echo "internal error: unexpected stack name derived: '${STACK}'" >&2; exit 1 ;;
+esac
+
 RESULTS="${REPO_ROOT}/tools/skill-loop/results.jsonl"
 
 export STACKDOME_CONFIG="${WORK}/stackdome.json"
 SOURCE_CONFIG="${HOME}/.stackdome/config.local.json"
 
-# Warm the source token. The local instance's access_token is short-lived and
-# only refreshes when a command runs against the full config (it carries
-# refresh_token); without this, a source file left idle between iterations
-# can hand the throwaway copy below an already-dead access_token.
-STACKDOME_CONFIG="$SOURCE_CONFIG" stackdome doctor -o json >/dev/null 2>&1
+# Result fields, defaulted so a row can always be written even if the script
+# never gets past setup. STAGE stays "setup" until the measured `claude -p`
+# call actually runs; write_row uses that to label an early failure
+# "setup_fail" with tool_calls: null (honest — there is no transcript)
+# instead of silently producing no row at all.
+STAGE="setup"
+SESSION_ID=""
+COST="0"
+SUBTYPE=""
+DURATION_MS="0"
+CALLS=""
+GATES=""
+ROW_WRITTEN=0
+
+write_row() {
+  [ "$ROW_WRITTEN" = "1" ] && return 0
+  ROW_WRITTEN=1
+
+  python3 "${REPO_ROOT}/tools/skill-loop/guarded_facts.py" \
+    "${REPO_ROOT}/.claude/skills/use-stackdome/SKILL.md" 2>/dev/null
+  local facts_ok=$?
+
+  python3 - "$LABEL" "$CALLS" "$GATES" "$facts_ok" "$URL" "$SESSION_ID" "$COST" \
+    "$SUBTYPE" "$DURATION_MS" "$((TIMEOUT_SECS * 1000))" "$STAGE" \
+    >> "$RESULTS" <<'PY'
+import json, sys
+(label, calls, gates_json, facts_ok, url, session, cost,
+ subtype, duration_ms, timeout_ms, stage) = sys.argv[1:12]
+
+if stage == "setup":
+    # Never got as far as launching the measured agent: no gates to run.
+    failures = ["setup failed before the measured agent ran"]
+    gates_passed = False
+else:
+    gates = json.loads(gates_json) if gates_json else {"passed": False, "failures": ["no gate output"]}
+    failures = list(gates["failures"])
+    gates_passed = gates["passed"]
+
+if facts_ok != "0":
+    failures.append("guarded facts missing from SKILL.md")
+passed = gates_passed and facts_ok == "0"
+
+duration_ms_i = int(duration_ms) if duration_ms.isdigit() else 0
+timeout_ms_i = int(timeout_ms)
+if passed:
+    outcome = "ok"
+elif stage == "setup":
+    outcome = "setup_fail"
+elif subtype != "success":
+    # Killed at (or within 5s of) the timeout ceiling vs some other failure
+    # mode (e.g. auth) that ends the subprocess quickly instead.
+    outcome = "timeout" if duration_ms_i >= timeout_ms_i - 5000 else "error"
+else:
+    outcome = "gate_fail"
+
+print(json.dumps({
+    "label": label,
+    "tool_calls": int(calls) if calls.isdigit() else None,
+    "passed": passed,
+    "outcome": outcome,
+    "failures": failures,
+    "url": url,
+    "session_id": session,
+    "cost_usd": float(cost) if cost else 0.0,
+}))
+PY
+
+  tail -1 "$RESULTS"
+}
 
 cleanup() {
-  STACKDOME_CONFIG="${WORK}/stackdome.json" \
-    stackdome destroy --stack "${STACK}" -y >/dev/null 2>&1
+  write_row
+  # Re-check the pattern here too (not just once, above): cleanup is the
+  # last line of defense against destroying the wrong stack, so it must not
+  # trust that STACK is still what it was set to.
+  case "$STACK" in
+    sd-loop-*)
+      STACKDOME_CONFIG="${WORK}/stackdome.json" \
+        timeout 60 stackdome destroy --stack "${STACK}" -y >/dev/null 2>&1
+      ;;
+    *)
+      echo "refusing to destroy unexpected stack name: '${STACK}'" >&2
+      ;;
+  esac
   rm -rf "${WORK}"
 }
 trap cleanup EXIT
+
+URL=""
+
+# Warm the source token. The local instance's access_token is short-lived and
+# only refreshes when a command runs against the full config (it carries
+# refresh_token); without this, a source file left idle between iterations
+# can hand the throwaway copy below an already-dead access_token. Timeout
+# guards it (and destroy, above) against an instance that's up but hung
+# rather than cleanly refusing — without this, cleanup could stall forever
+# and break the "always destroys" guarantee.
+STACKDOME_CONFIG="$SOURCE_CONFIG" timeout 60 stackdome doctor -o json >/dev/null 2>&1
 
 # Seed auth: server + token, but NO project_name and NO current_stack. This is
 # the just-logged-in state, and the one that exposed the cloud project bug.
@@ -60,7 +169,7 @@ with open(dst, "w") as f:
 PY
 
 # Throwaway working copy.
-git clone --depth 1 --quiet "file://${REPO_ROOT}" "${WORK}/${STACK}"
+git clone --depth 1 --quiet "file://${REPO_ROOT}" "${WORK}/${STACK}" || exit 1
 
 # Isolation: a file:// clone's "origin" points straight at REPO_ROOT — the
 # user's real working copy, not a throwaway. A measured agent running with
@@ -83,11 +192,13 @@ git -C "${WORK}/${STACK}" rm --cached --quiet stackfile.yaml
 sed -i.bak "s/^name: .*/name: ${STACK}/" "${WORK}/${STACK}/stackfile.yaml"
 rm -f "${WORK}/${STACK}/stackfile.yaml.bak"
 
-mkdir -p "${WORK}/${STACK}/.claude/skills"
+mkdir -p "${WORK}/${STACK}/.claude/skills" || exit 1
 cp -R "${REPO_ROOT}/.claude/skills/use-stackdome" \
-      "${WORK}/${STACK}/.claude/skills/use-stackdome"
+      "${WORK}/${STACK}/.claude/skills/use-stackdome" || exit 1
 
 cd "${WORK}/${STACK}" || exit 1
+
+STAGE="ran"
 
 # --dangerously-skip-permissions is required: a headless agent cannot answer a
 # permission prompt, and a stalled run produces no tool-call count at all —
@@ -113,47 +224,7 @@ URL="$(stackdome open web --stack "${STACK}" -o json 2>/dev/null \
   | python3 -c 'import sys,json; print(json.load(sys.stdin).get("target",""))' 2>/dev/null)"
 
 GATES="$(python3 "${REPO_ROOT}/tools/skill-loop/gates.py" "${WORK}/status.json" "${URL}" 2>/dev/null)"
-python3 "${REPO_ROOT}/tools/skill-loop/guarded_facts.py" \
-  "${REPO_ROOT}/.claude/skills/use-stackdome/SKILL.md" 2>/dev/null
-FACTS_OK=$?
 
-# Record a row on every outcome, not just success: a timed-out or otherwise
-# non-success run still has a real, diagnosable transcript and tool-call
-# count (a run killed at the timeout ceiling made 29 real tool calls before
-# dying) — throwing that away as a bare `tool_calls: null` is what made the
-# first baseline failure take a live re-run to even understand.
-python3 - "$LABEL" "$CALLS" "$GATES" "$FACTS_OK" "$URL" "$SESSION_ID" "$COST" \
-  "$SUBTYPE" "$DURATION_MS" "$((TIMEOUT_SECS * 1000))" \
-  >> "$RESULTS" <<'PY'
-import json, sys
-label, calls, gates_json, facts_ok, url, session, cost, subtype, duration_ms, timeout_ms = sys.argv[1:11]
-gates = json.loads(gates_json) if gates_json else {"passed": False, "failures": ["no gate output"]}
-failures = list(gates["failures"])
-if facts_ok != "0":
-    failures.append("guarded facts missing from SKILL.md")
-passed = gates["passed"] and facts_ok == "0"
-
-duration_ms = int(duration_ms) if duration_ms.isdigit() else 0
-timeout_ms = int(timeout_ms)
-if passed:
-    outcome = "ok"
-elif subtype != "success":
-    # Killed at (or within 5s of) the timeout ceiling vs some other failure
-    # mode (e.g. auth) that ends the subprocess quickly instead.
-    outcome = "timeout" if duration_ms >= timeout_ms - 5000 else "error"
-else:
-    outcome = "gate_fail"
-
-print(json.dumps({
-    "label": label,
-    "tool_calls": int(calls) if calls.isdigit() else None,
-    "passed": passed,
-    "outcome": outcome,
-    "failures": failures,
-    "url": url,
-    "session_id": session,
-    "cost_usd": float(cost),
-}))
-PY
-
-tail -1 "$RESULTS"
+# write_row runs from the EXIT trap (see cleanup, above) so every exit path —
+# this normal one, or an early `exit 1` during setup — always produces
+# exactly one row.
