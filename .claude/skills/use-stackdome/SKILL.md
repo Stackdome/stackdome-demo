@@ -10,15 +10,19 @@ Stackdome is an application-delivery platform. You drive it through the `stackdo
 
 ## Deploy this repo now
 
-Zero-to-URL for the common case: a git-hosted repo, checked out locally, no persisted Stackdome auth yet. Forks to [Reference](#reference) only where the path branches (private repo, self-hosted target, no git remote, existing image).
+Zero-to-URL for the common case: a git-hosted repo, checked out locally, no persisted Stackdome auth yet, targeting Stackdome Cloud (the default target for this path). Forks to [Reference](#reference) only where the path branches (private repo, self-hosted target, no git remote, existing image).
+
+Every step below prefixes `stackdome` calls with `export STACKDOME_PROJECT=default` — Cloud needs it, or every command below exits `3` with `Resource not found` (see [Verified state](#verified-state-v002-alpha-checked-2026-08-09) for why). **Targeting self-hosted instead? Drop that `export` line — self-hosted does not need it and should not have it forced.**
 
 1. **CLI + auth, one call:**
 
    ```bash
-   stackdome version; stackdome doctor -o json
+   stackdome version
+   export STACKDOME_PROJECT=default
+   stackdome doctor -o json
    ```
 
-   No CLI? The docs install URL 404s (release repo is private) — install the verified way:
+   No CLI? The docs install URL 404s (release repo is private) — get the user's go-ahead, then install the verified way:
 
    ```bash
    gh release download <tag> -R Stackdome/stackdome-cli -p '*_darwin_arm64.tar.gz'
@@ -39,6 +43,7 @@ Zero-to-URL for the common case: a git-hosted repo, checked out locally, no pers
 3. **Generate and gate the stackfile:**
 
    ```bash
+   export STACKDOME_PROJECT=default
    stackdome init
    stackdome validate
    ```
@@ -48,6 +53,7 @@ Zero-to-URL for the common case: a git-hosted repo, checked out locally, no pers
 4. **Deploy — validate and deploy fused into one call:**
 
    ```bash
+   export STACKDOME_PROJECT=default
    stackdome validate && stackdome deploy --wait -o json
    ```
 
@@ -56,6 +62,7 @@ Zero-to-URL for the common case: a git-hosted repo, checked out locally, no pers
 5. **Verify — one batched call**, substituting the stack name:
 
    ```bash
+   export STACKDOME_PROJECT=default
    stackdome status --stack <name> -o json > /tmp/st.json && python3 -c "
    import json; d=json.load(open('/tmp/st.json'))
    s=d['stack']; c=s.get('converged_release') or {}; l=s.get('latest_release') or {}
@@ -66,6 +73,8 @@ Zero-to-URL for the common case: a git-hosted repo, checked out locally, no pers
        print(n, 'Available=', cs.get('Available'), 'Converged=', cs.get('Converged'))
    " && stackdome open --stack <name> -o json
    ```
+
+   The `&&` chain stops the sequence on a failed `status` instead of letting `python3` throw on a truncated file while `open` still prints a URL next to the traceback. `open` takes no resource argument — naming one would exit `3` on a stack without one by that name.
 
    Then confirm the URL actually serves, using the `target` from `open`'s output:
 
@@ -85,7 +94,7 @@ Facts confirmed by direct observation. Trust these over inference; they cost ~20
 
 - **Cloud is `https://stackdome.io`.** `cloud.stackdome.com` does not resolve (NXDOMAIN); `cloud.stackdome.io` and `app.stackdome.io` serve Traefik's self-signed default certificate and fail TLS verification.
 - **The CLI install URL in the docs 404s** — the release repo is private. Use the verified `gh release download` steps in [Deploy this repo now](#deploy-this-repo-now) step 1.
-- **On Cloud, every command needs the inline `STACKDOME_PROJECT=default` prefix** — narrower than [Authenticate](#authenticate)'s "don't use env vars" guidance, which covers persisted auth state (`STACKDOME_URL` / `STACKDOME_TOKEN` / `STACKDOME_ORG`) that `stackdome login` writes once. Root cause: Cloud's `/users/current/projects` returns membership objects the CLI decodes as an empty project name (stackdome-cli#7), so without the prefix every command exits `3` with `Resource not found`. Self-hosted is unaffected. Cost until #7 ships: forfeits the `stackdome`-prefix pre-approval ([Authenticate](#authenticate)) and disables persisted stack selection, so `--stack <name>` becomes mandatory.
+- **On Cloud, every command needs the inline `STACKDOME_PROJECT=default` prefix** — narrower than [Authenticate](#authenticate)'s "don't use env vars" guidance, which covers persisted auth state (`STACKDOME_URL` / `STACKDOME_TOKEN` / `STACKDOME_ORG`) that `stackdome login` writes once. Root cause: Cloud's `/users/current/projects` returns membership objects the CLI decodes as an empty project name (stackdome-cli#7), so without the prefix every command exits `3` with `Resource not found`. On a local/self-hosted instance the server still returns the old empty-list shape, the CLI's fallback fires, and the project resolves correctly — **that asymmetry is why a loop measured only against localhost would never observe this fact and would strip it as dead weight.** Until #7 ships, prefix every Cloud command: `STACKDOME_PROJECT=default stackdome ...`. Cost: forfeits the `stackdome`-prefix pre-approval ([Authenticate](#authenticate)) and disables persisted stack selection, so `--stack <name>` becomes mandatory.
 - **`deploy` has no `--stack` flag.** The stack name comes from `name:` in the stackfile. `status`, `open`, `logs`, and `release *` do take `--stack`.
 - **`status -o json` returns `{"stack": {...}, "live_status": {...}}`.** Release state is at `.stack.converged_release` / `.stack.latest_release`; per-resource readiness is at `.live_status.resources.<name>.conditions[]`, a map keyed by resource name, not a list.
 - **`open -o json` returns `{"target": "<url>", "urls": [...]}`.**
@@ -100,10 +109,12 @@ This file carries the procedure — what to run, in what order, and how to tell 
 Each of these is one tool call; prefer them over running the parts separately. The probe, validate+deploy, and verify+open calls also appear as steps 1, 4, and 5 of [Deploy this repo now](#deploy-this-repo-now) — this section adds only what that walkthrough doesn't cover.
 
 ```bash
-stackdome version; stackdome doctor -o json; ls stackfile.yaml 2>/dev/null
+stackdome version
+export STACKDOME_PROJECT=default
+stackdome doctor -o json; ls stackfile.yaml 2>/dev/null
 ```
 
-`stackdome validate && stackdome deploy --wait -o json` — same composite call as [Scale](#scale); that is its one canonical example, do not add a second. The `&&` chain stops the sequence on a failed `status` instead of letting `python3` throw on a truncated file while `open` still prints a URL next to the traceback. `open` takes no resource argument — omitting it returns the stack's `{"target", "urls"}` regardless; naming one resource would exit `3` on a stack without one by that name. Batching the probe doesn't change what counts as success — judge it against [Verification contract](#verification-contract).
+`STACKDOME_PROJECT=default stackdome validate && stackdome deploy --wait -o json` — same call as golden-path step 4, also shown at [Scale](#scale). Batching the probe doesn't change what counts as success — judge it against [Verification contract](#verification-contract).
 
 ### Output contract
 
