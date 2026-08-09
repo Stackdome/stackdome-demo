@@ -69,15 +69,17 @@ git clone --depth 1 --quiet "file://${REPO_ROOT}" "${WORK}/${STACK}"
 # the clone can resolve back out to the real repo.
 git -C "${WORK}/${STACK}" remote remove origin
 
-# Point the stackfile at THIS iteration's unique stack name instead of
-# deleting it. stackfile.yaml is git-tracked, so `rm -f` presents as a
-# tracked-file deletion; the measured agent "helpfully" restores it from git
-# — hardcoded to name: stackdome-demo — so every iteration collided on one
-# shared, non-throwaway stack instead of getting real per-iteration
-# isolation. Rewriting the name in place keeps the file present and
-# git-clean-looking, so nothing tries to restore it. Everything else in the
-# fixture (prebuilt quay.io/stackdome/hello-stack-* images, matching the
-# design spec's 55s deploy) is left as committed.
+# Belt and braces on the stackfile, in the clone only. stackfile.yaml is
+# git-tracked (name: stackdome-demo), so the brief's `rm -f` presented as a
+# tracked-file deletion and the measured agent "helpfully" restored it from
+# git — every iteration collided on one shared, non-throwaway stack instead
+# of getting real per-iteration isolation. Fix: untrack it (so there is
+# nothing to restore from) AND rewrite its name in place to this iteration's
+# unique stack id. The file stays present on disk throughout — only its git
+# tracking status and its name: line change. Everything else in the fixture
+# (prebuilt quay.io/stackdome/hello-stack-* images, matching the design
+# spec's 55s deploy) is left as committed.
+git -C "${WORK}/${STACK}" rm --cached --quiet stackfile.yaml
 sed -i.bak "s/^name: .*/name: ${STACK}/" "${WORK}/${STACK}/stackfile.yaml"
 rm -f "${WORK}/${STACK}/stackfile.yaml.bak"
 
