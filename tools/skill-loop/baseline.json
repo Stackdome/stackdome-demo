@@ -1,0 +1,7 @@
+{
+  "tool_calls": 43,
+  "session_id": "eed0d682-f38b-4076-84ed-ef05d132a324",
+  "outcome": "gate_fail",
+  "note": "unmodified SKILL.md against local instance, measured (guarded facts expected to fail: Tasks 5/7 add them)",
+  "hand_counted_plan_baseline": 35
+}
