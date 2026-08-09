@@ -174,7 +174,7 @@ Missing? The docs' piped-script install 404s (release repo is private) — get t
 
 | They say | Do |
 |---|---|
-| Stackdome Cloud, or no preference | Use `https://cloud.stackdome.com` → step 4 |
+| Stackdome Cloud, or no preference | Use `https://stackdome.io` (see [Verified state](#verified-state-v002-alpha-checked-2026-08-09) — `cloud.stackdome.com` does not resolve) → step 4 |
 | They already have an instance | Take the URL → step 4 |
 | Set one up on their server | Take `user@host` → step 3 |
 
