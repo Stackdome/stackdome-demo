@@ -7,7 +7,7 @@ import Path from './Path';
 import About from './About';
 import Wordmark from './Wordmark';
 import * as Fx from './Fx';
-import { CELEBRATIONS } from '../lib/config';
+import { CELEBRATIONS, HATS } from '../lib/config';
 
 const BATCH = 10;          /* at ten queued, one job takes all ten */
 const PAIR = 2;            /* anything waiting goes two at a time */
@@ -15,6 +15,13 @@ const DWELL = 250;         /* minimum dwell per stage, or the path lights at onc
 const SEEN_CAP = 300;
 
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
+
+/* most celebrations are just "Celebrate"; a couple name what they actually do */
+function labelFor(kind) {
+  if (kind === 'kisses') return 'Blow a kiss';
+  if (kind === 'wand') return 'Cast a spell';
+  return 'Celebrate';
+}
 
 function uuid() {
   if (typeof crypto !== 'undefined' && crypto.randomUUID) return crypto.randomUUID();
@@ -83,6 +90,50 @@ export default function Stage({ config }) {
     queueRef.current = pending.current.size;
     setQueueState(queueRef.current);
     buzz();
+    /* the wand keeps casting while there is anything left to cast for */
+    if (wandOn.current) {
+      if (queueRef.current > 0) Fx.wandLevel(queueRef.current);
+      else wandEnd();
+    }
+  }
+
+  /* ---------------- the wand's continuous cast ---------------- */
+
+  const wandOn = useRef(false), wandEndT = useRef(null);
+  const celebOverride = useRef(null);      /* set by window.hello.celeb() */
+
+  function wandRun(level) {
+    clearTimeout(wandEndT.current);
+    const guy = guyRef.current;
+    if (!wandOn.current) {
+      wandOn.current = true;
+      Fx.wandStart(() => pt('.muzzleW'));
+      /* he has to be on screen for the whole cast: the wand is where the stars
+         come from, and `in` is what holds him up */
+      if (guy) guy.classList.add('in', 'fire');
+    }
+    Fx.wandLevel(level);
+    /* the jobs are dropped from the queue just before this runs, so the empty
+       queue that would have ended the cast can land before it starts. Arm the
+       tail here too, or a cast that began at zero would never come down. */
+    if (queueRef.current === 0) wandEnd();
+  }
+
+  /* the tail keeps the swing going a beat past the last job, so a queue that
+     dribbles in one at a time still reads as one long cast */
+  function wandEnd() {
+    if (!wandOn.current) return;
+    clearTimeout(wandEndT.current);
+    wandEndT.current = t(() => {
+      if (queueRef.current > 0) return;               /* more arrived while waiting */
+      wandOn.current = false;
+      Fx.wandStop();
+      const guy = guyRef.current;
+      if (!guy) return;
+      guy.classList.remove('fire');
+      /* the duck the per-job timer skipped while the cast was running */
+      if (!playing.current) { guy.classList.remove('in', 'buzz', 'hard'); idle(); }
+    }, 1600);                        /* one full swing, so a single press still lands */
   }
 
   function flash(key, ms) {
@@ -105,10 +156,13 @@ export default function Stage({ config }) {
     if (someoneElse) say('someone else just celebrated', '', 2200);
   }
 
+  /* the wand reads this every frame, so a miss has to be survivable: an
+     exception here would take the whole canvas loop down with it */
   function pt(sel) {
     const guy = guyRef.current;
-    if (!guy) return { x: 0, y: 0 };
-    const r = guy.querySelector(sel).getBoundingClientRect();
+    const el = guy && guy.querySelector(sel);
+    if (!el) return { x: innerWidth / 2, y: innerHeight / 2 };
+    const r = el.getBoundingClientRect();
     return { x: r.left + r.width / 2, y: r.top + r.height / 2 };
   }
 
@@ -131,6 +185,9 @@ export default function Stage({ config }) {
     } else if (kind === 'kisses') {
       const k = pt('.handR');
       Fx.kisses(k.x + 14, k.y - 10, mult);
+    } else if (kind === 'wand') {
+      /* read the tip every frame: the stars come off the hand as it swings */
+      Fx.wand(() => pt('.muzzleW'), mult);
     }
   }
 
@@ -221,7 +278,9 @@ export default function Stage({ config }) {
   function playClaimed(group, mine) {
     const take = group.length;
     const ev = group[0];
-    const kind = CELEBRATIONS.includes(ev.kind) ? ev.kind : config.celebration;
+    /* the console override wins, so a swapped celebration is what real jobs fire */
+    const kind = celebOverride.current
+      || (CELEBRATIONS.includes(ev.kind) ? ev.kind : config.celebration);
     const guy = guyRef.current;
 
     clearTimeout(idleT.current);
@@ -250,7 +309,11 @@ export default function Stage({ config }) {
         const bn = bignumRef.current;
         if (bn) { bn.textContent = '+' + take; bn.classList.remove('go'); void bn.offsetWidth; bn.classList.add('go'); }
       }
-      if (!reduce.current) act(kind, take);
+      /* the wand is a running cast, not a burst: top up its level and let it run */
+      if (!reduce.current) {
+        if (kind === 'wand') wandRun(Math.max(take, queueRef.current));
+        else act(kind, take);
+      }
       const h = h1Ref.current;
       if (h) { h.classList.remove('jump'); void h.offsetWidth; h.classList.add('jump'); }
       if (heavy) {
@@ -259,7 +322,8 @@ export default function Stage({ config }) {
       }
     }, fireAt);
 
-    t(() => { if (guy) guy.classList.remove('fire'); }, fireAt + 450);
+    /* the wand drops `fire` when its cast ends, not on a timer */
+    if (kind !== 'wand') t(() => { if (guy) guy.classList.remove('fire'); }, fireAt + 450);
 
     t(() => {
       setLit((l) => ({ ...l, p2: false }));
@@ -267,6 +331,9 @@ export default function Stage({ config }) {
          waiting he stays up and goes straight into the next job */
       const more = queueRef.current > 0 && buf.current.some((e) => e.stage === 'claimed' && isMine(e));
       if (more) { buzz(); return; }
+      /* a running cast outlives a single job — ducking now would fire the wand
+         from off screen. wandEnd() puts him away instead. */
+      if (wandOn.current) return;
       if (guy) guy.classList.remove('in');
       if (kind === 'lasers') discoT.current = t(() => setDiscoDown(false), 1300);
     }, cycle);
@@ -387,6 +454,24 @@ export default function Stage({ config }) {
     Fx.attach(canvasRef.current);
     addEventListener('resize', Fx.size);
 
+    /* an internal test handle: swap the hat or the celebration without a
+       redeploy, drive the wand by hand, or queue real jobs from the console */
+    window.hello = {
+      hats: HATS,
+      celebs: CELEBRATIONS,
+      hat(v) { if (guyRef.current) guyRef.current.dataset.hat = v; return v; },
+      celeb(v) {
+        if (!CELEBRATIONS.includes(v)) return CELEBRATIONS;
+        celebOverride.current = v;                                    /* real jobs fire it too */
+        if (guyRef.current) guyRef.current.dataset.fx = v;
+        if (goRef.current) goRef.current.textContent = labelFor(v);   /* the label follows */
+        return v;
+      },
+      headline(v) { if (h1Ref.current) h1Ref.current.textContent = v; return v; },
+      /* n real jobs through redis and the worker */
+      press(n) { for (let i = 0; i < (n || 1); i++) t(() => press(), i * 60); return n || 1; },
+    };
+
     let es = null, closed = false, tries = 0, tickT = null, reconnT = null;
 
     function connect() {
@@ -453,8 +538,10 @@ export default function Stage({ config }) {
       clearInterval(upT);
       clearTimeout(idleT.current);
       clearTimeout(msgT.current);
+      clearTimeout(wandEndT.current);
       removeEventListener('resize', Fx.size);
       Fx.detach();
+      delete window.hello;
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
@@ -491,7 +578,7 @@ export default function Stage({ config }) {
             <Bot ref={guyRef} hat={config.hat} fx={config.celebration} />
           </div>
           <button className="go" ref={goRef} onClick={press}>
-            {config.celebration === 'kisses' ? 'Blow a kiss' : 'Celebrate'}
+            {labelFor(config.celebration)}
           </button>
         </div>
 
