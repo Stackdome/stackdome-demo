@@ -1,8 +1,8 @@
 /* Env is read once, at module load. A typo must never take the page down:
    anything unrecognised falls back to the first option. */
 
-export const CELEBRATIONS = ['confetti', 'lasers', 'balloons', 'kisses'];
-export const HATS = ['party', 'cap', 'crown', 'beanie'];
+export const CELEBRATIONS = ['confetti', 'lasers', 'balloons', 'kisses', 'wand'];
+export const HATS = ['party', 'cap', 'crown', 'beanie', 'wizard'];
 
 function pick(value, options) {
   return options.includes(value) ? value : options[0];

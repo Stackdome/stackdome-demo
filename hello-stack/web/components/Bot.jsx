@@ -2,6 +2,17 @@
 
 import { forwardRef } from 'react';
 
+/* a five-point star, written out so the wizard hat can carry a few */
+function star(cx, cy, r) {
+  const p = [];
+  for (let i = 0; i < 10; i++) {
+    const a = -Math.PI / 2 + (i * Math.PI) / 5;
+    const d = i % 2 ? r * .45 : r;
+    p.push(`${(cx + Math.cos(a) * d).toFixed(1)} ${(cy + Math.sin(a) * d).toFixed(1)}`);
+  }
+  return `M${p.join(' L')} Z`;
+}
+
 /* attribute-driven: data-hat picks the hat, data-fx picks the prop + face,
    the `fire` class (added by Stage) runs the celebration animation. */
 const Bot = forwardRef(function Bot({ hat, fx }, ref) {
@@ -14,6 +25,16 @@ const Bot = forwardRef(function Bot({ hat, fx }, ref) {
             <clipPath id="popClip"><path d="M-7 2 L7 2 L15 -56 L-15 -56 Z" /></clipPath>
             <linearGradient id="crownG" x1="0" y1="0" x2="0" y2="1">
               <stop offset="0" stopColor="#F5C462" /><stop offset="1" stopColor="#D89A2C" />
+            </linearGradient>
+            {/* the wizard hat: felt blue, lit from the left */}
+            <linearGradient id="wizG" x1="0" y1="0" x2="1" y2=".4">
+              <stop offset="0" stopColor="#5BA8E8" /><stop offset=".5" stopColor="#2B7BC4" />
+              <stop offset="1" stopColor="#14538F" />
+            </linearGradient>
+            {/* the popper: shiny pink-red, highlight running down the left */}
+            <linearGradient id="popG" x1="0" y1="0" x2="1" y2=".2">
+              <stop offset="0" stopColor="#FF6E9C" /><stop offset=".42" stopColor="#F4265E" />
+              <stop offset="1" stopColor="#A8123E" />
             </linearGradient>
           </defs>
 
@@ -40,6 +61,26 @@ const Bot = forwardRef(function Bot({ hat, fx }, ref) {
             <path d="M64 58 L108 58" stroke="rgba(0,0,0,.2)" strokeWidth="3.5" />
             <circle cx="88" cy="11" r="7" fill="#34D399" />
             <circle cx="86" cy="9" r="2.6" fill="#7DEBC0" opacity=".8" />
+          </g>
+
+          {/* the cone slouches to the right and the brim is wider than the head */}
+          <g className="hat hat-wizard" transform="rotate(4 90 56)">
+            <path d="M62 54 Q66 26 86 12 Q104 0 120 6 Q110 20 105 33 Q99 45 100 54 Z" fill="url(#wizG)" />
+            <path d="M62 54 Q66 28 84 14 Q90 30 84 54 Z" fill="#FFFFFF" opacity=".1" />
+            <ellipse cx="84" cy="55.5" rx="42" ry="8" fill="#0F467A" />
+            <ellipse cx="84" cy="53.5" rx="42" ry="8" fill="#3E90D4" />
+            <ellipse cx="84" cy="53.5" rx="42" ry="8" fill="url(#wizG)" opacity=".45" />
+            <g fill="#FFC93C">
+              <path d={star(120, 10, 5)} />
+              <path d={star(86, 26, 4.6)} />
+              <path d={star(97, 43, 3.6)} />
+              <path d={star(72, 44, 3.2)} />
+              {/* crescents: a gold disc with a hat-blue disc bitten out of it */}
+              <circle cx="94" cy="17" r="3.6" />
+              <circle cx="96.2" cy="16" r="3.2" fill="#2B7BC4" />
+              <circle cx="76" cy="37" r="3.2" />
+              <circle cx="78" cy="36" r="2.8" fill="#2B7BC4" />
+            </g>
           </g>
 
           <g className="hat hat-cap" transform="rotate(-4 90 56)">
@@ -109,11 +150,13 @@ const Bot = forwardRef(function Bot({ hat, fx }, ref) {
               {/* party popper */}
               <g className="prop prop-popper">
                 <g transform="rotate(42)">
-                  <path d="M-7 2 L7 2 L15 -56 L-15 -56 Z" fill="#F97316" />
+                  <path d="M-7 2 L7 2 L15 -56 L-15 -56 Z" fill="url(#popG)" />
                   <g clipPath="url(#popClip)">
-                    <rect x="-18" y="-20" width="36" height="8" fill="#FDFCF9" />
-                    <rect x="-18" y="-36" width="36" height="8" fill="#34D399" />
-                    <rect x="-18" y="-50" width="36" height="7" fill="#BB4717" />
+                    <rect x="-18" y="-20" width="36" height="8" fill="#FFE3EC" />
+                    <rect x="-18" y="-36" width="36" height="8" fill="#FF9BBE" />
+                    <rect x="-18" y="-50" width="36" height="7" fill="#8E0E33" />
+                    {/* the shine down the left face */}
+                    <path d="M-11 2 L-6 -56 L-1 -56 L-4 2 Z" fill="#FFFFFF" opacity=".22" />
                   </g>
                   <ellipse cx="0" cy="-56" rx="15" ry="5" fill="#0A0E14" />
                   <ellipse cx="0" cy="-56" rx="15" ry="5" fill="none" stroke="#FDFCF9" strokeWidth="1.6" opacity=".5" />
@@ -126,6 +169,16 @@ const Bot = forwardRef(function Bot({ hat, fx }, ref) {
                     <path d="M-14 -62 L-28 -72 L-18 -69 Z" fill="#FFD2AC" />
                   </g>
                   <circle className="muzzle" cx="0" cy="-60" r="1" fill="none" />
+                </g>
+              </g>
+              {/* wand: the tip is what the sparkles are fired from */}
+              <g className="prop prop-wand">
+                <g transform="rotate(26)">
+                  <rect x="-2.2" y="-52" width="4.4" height="58" rx="2.2" fill="#6B5136" />
+                  <rect x="-2.2" y="-52" width="1.6" height="58" rx=".8" fill="#8A6B49" />
+                  <rect x="-3.6" y="-6" width="7.2" height="15" rx="3.4" fill="#4A3826" />
+                  <circle className="tip neon" color="#FFD84D" cx="0" cy="-54" r="3.4" fill="#FFF3C4" />
+                  <circle className="muzzleW" cx="0" cy="-58" r="1" fill="none" />
                 </g>
               </g>
               {/* right blaster */}

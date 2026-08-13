@@ -44,11 +44,24 @@ redeploy. Unrecognised values fall back to the first supported option instead of
 
 | Variable      | Default                   | Description |
 |---------------|---------------------------|-------------|
-| `CELEBRATION` | `confetti`                | Animation shown on completion: `confetti`, `lasers`, `balloons`, or `kisses` |
-| `HAT`         | `party`                   | Character variant: `party`, `cap`, `crown`, or `beanie` |
+| `CELEBRATION` | `confetti`                | Animation shown on completion: `confetti`, `lasers`, `balloons`, `kisses`, or `wand` |
+| `HAT`         | `party`                   | Character variant: `party`, `cap`, `crown`, `beanie`, or `wizard` |
 | `HEADLINE`    | `Your stack is now live.` | Page heading |
 | `PUBLIC_URL`  | *(empty)*                 | Overrides the URL shown and copied on the page. Empty uses the page's own address |
 | `REDIS_URL`   | `redis://redis:6379`      | Redis connection string |
+
+### Trying options without a redeploy
+
+The page exposes `window.hello` for internal testing. It changes the running page only —
+nothing is persisted, and a reload puts everything back the way the environment set it.
+
+```js
+hello.hats; hello.celebs      // what is available
+hello.hat('wizard')           // swap the hat
+hello.celeb('wand')           // swap the celebration
+hello.headline('ship it')     // change the heading
+hello.press(12)               // queue twelve real jobs through redis
+```
 
 ## Persistence
 

@@ -106,13 +106,17 @@ button.go:focus-visible{outline:2px solid #FFD2AC;outline-offset:4px;}
 /* ---------- about ---------- */
 .about{margin-top:52px;width:100%;display:flex;flex-direction:column;align-items:center;}
 .about summary{
-  list-style:none;cursor:pointer;
-  font-family:"IBM Plex Mono",monospace;font-size:11.5px;color:var(--faint);
-  padding:7px 13px;border-radius:999px;transition:color .2s,background .2s;
+  list-style:none;cursor:pointer;display:inline-flex;align-items:center;gap:7px;
+  font-family:"IBM Plex Mono",monospace;font-size:12px;color:var(--text-3);
+  border:1px dashed var(--rule);
+  padding:7px 14px;border-radius:999px;transition:color .2s,background .2s,border-color .2s;
 }
 .about summary::-webkit-details-marker{display:none;}
-.about summary:hover{color:var(--text-3);}
-.about[open] summary{color:var(--amber);background:rgba(249,115,22,.09);}
+/* the caret is the affordance: a bare word read as static text */
+.about summary::after{content:"▾";font-size:9px;transition:transform .2s;}
+.about[open] summary::after{transform:rotate(180deg);}
+.about summary:hover{color:var(--text);border-color:var(--amber);background:rgba(249,115,22,.06);}
+.about[open] summary{color:var(--amber);border-color:var(--amber);background:rgba(249,115,22,.09);}
 .about summary:focus-visible{outline:2px solid var(--amber);outline-offset:3px;}
 .panel{margin-top:16px;width:100%;text-align:left;border:1px solid var(--line);border-radius:12px;
        background:var(--panel);padding:20px 22px;}
@@ -280,12 +284,14 @@ body.shake{animation:kick .5s cubic-bezier(.3,.9,.3,1);}
 .guy[data-hat="cap"]    .hat-cap   {display:block;}
 .guy[data-hat="crown"]  .hat-crown {display:block;}
 .guy[data-hat="beanie"] .hat-beanie{display:block;}
+.guy[data-hat="wizard"] .hat-wizard{display:block;}
 .guy[data-fx="confetti"] .prop-popper{display:block;}
 .guy[data-fx="lasers"]   .prop-blasterR,
 .guy[data-fx="lasers"]   .prop-blasterL{display:block;}
 .guy[data-fx="balloons"] .prop-bunch{display:block;}
 .guy[data-fx="balloons"].fire .prop-bunch{opacity:0;transition:opacity .2s ease .25s;}
 .guy[data-fx="kisses"] .prop-puff{display:block;}
+.guy[data-fx="wand"] .prop-wand{display:block;}
 .face{display:none;}
 .guy[data-fx="kisses"] .face-kiss{display:block;}
 .guy[data-fx="kisses"] .baseEye{display:none;}
@@ -293,6 +299,34 @@ body.shake{animation:kick .5s cubic-bezier(.3,.9,.3,1);}
 .guy[data-fx="kisses"].fire .cheek{animation:puffcheek 1.2s cubic-bezier(.3,.9,.35,1);}
 @keyframes puffcheek{0%,100%{transform:scale(1);}30%{transform:scale(1.28,1.2);}}
 .neon{filter:drop-shadow(0 0 4px currentColor);}
+
+/* ---------- wand ---------- */
+/* the body leans into the swing, left first, then follows it across */
+/* both loop: the cast runs until the queue is empty, not for a fixed beat */
+.guy[data-fx="wand"].fire{animation:cast 3.2s cubic-bezier(.4,.05,.4,1) infinite;}
+@keyframes cast{
+  0%{transform:translate(calc(-50% - 8px),3px) rotate(-3deg);}
+  25%{transform:translate(-50%,-7px) rotate(-9deg);}
+  50%{transform:translate(calc(-50% + 8px),3px) rotate(-16deg);}
+  75%{transform:translate(-50%,-7px) rotate(-9deg);}
+  100%{transform:translate(calc(-50% - 8px),3px) rotate(-3deg);}
+}
+/* the wand hand draws the wave: winds up left, sweeps across, settles.
+   1.6s matches SWEEP_DUR + SWEEP_LEAD in Fx.js — change both together. */
+.guy[data-fx="wand"].fire .handR{animation:sweepwand 3.2s cubic-bezier(.45,0,.55,1) infinite;}
+.guy[data-fx="wand"].fire .handL{animation:waveL 1s ease-in-out;}
+/* one there-and-back per cycle, so the hand tracks the emitter's swing */
+@keyframes sweepwand{
+  0%{transform:translate(-11px,-6px) rotate(-46deg);}
+  25%{transform:translate(0,-15px) rotate(0);}
+  50%{transform:translate(12px,-6px) rotate(46deg);}
+  75%{transform:translate(0,-15px) rotate(0);}
+  100%{transform:translate(-11px,-6px) rotate(-46deg);}
+}
+.guy[data-fx="wand"].fire .tip{animation:tipflare .55s ease-out;}
+/* the tip keeps a slow pulse while idle, so the wand reads as charged */
+.guy[data-fx="wand"] .tip{animation:wandpulse 2.6s ease-in-out infinite;}
+@keyframes wandpulse{0%,100%{opacity:.65;transform:scale(.85);}50%{opacity:1;transform:scale(1.15);}}
 .guy[data-fx="lasers"].fire .tip{animation:tipflare .5s ease-out;}
 @keyframes tipflare{0%{opacity:1;transform:scale(2.4);}100%{opacity:1;transform:scale(1);}}
 .tip{transform-box:fill-box;transform-origin:center;}
