@@ -25,7 +25,7 @@ resources:
         env:
             CELEBRATION: confetti
             HAT: party
-            HEADLINE: Heya Nikhil 👋
+            HEADLINE: Your stack is now live.
             PUBLIC_URL: "{{ self.public_url }}"
             REDIS_URL: "redis://{{ redis.host }}:6379"
         depends_on:

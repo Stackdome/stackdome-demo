@@ -563,7 +563,7 @@ export default function Stage({ config }) {
       <main>
         <div className="mark"><Wordmark /></div>
 
-        <h1 ref={h1Ref}>{config.headline}</h1>
+        <h1 ref={h1Ref}>Heya Nikhil 👋</h1>
 
         <button className={'link' + (copied ? ' done' : '') + (copyFailed ? ' failed' : '')} ref={linkRef} onClick={copy}>
           <span className="u">{copied ? 'copied — now send it' : copyFailed ? 'couldn’t copy — select it by hand' : shown}</span>
