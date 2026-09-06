@@ -1,0 +1,45 @@
+name: hello-stack
+resources:
+    redis:
+        image: redis:7-alpine
+        workload_type: StatefulService
+        command:
+            - redis-server
+            - --appendonly
+            - "yes"
+        ports:
+            - name: redis
+              port: 6379
+              protocol: TCP
+        volumes:
+            - name: redis
+              path: /data
+    web:
+        build:
+            repo: https://github.com/Stackdome/stackdome-demo
+            context: hello-stack/web
+        ports:
+            - name: http
+              port: 3000
+              public: true
+        env:
+            CELEBRATION: confetti
+            HAT: party
+            HEADLINE: Your stack is now live.
+            PUBLIC_URL: "{{ self.public_url }}"
+            REDIS_URL: "redis://{{ redis.host }}:6379"
+        depends_on:
+            - redis
+    worker:
+        workload_type: Worker
+        build:
+            repo: https://github.com/Stackdome/stackdome-demo
+            context: hello-stack/worker
+        env:
+            CELEBRATION: confetti
+            REDIS_URL: "redis://{{ redis.host }}:6379"
+        depends_on:
+            - redis
+volumes:
+    redis:
+        size: 1Gi
