@@ -1,0 +1,153 @@
+:root {
+  --bg: #f4f5f7;
+  --card: #ffffff;
+  --text: #1c2230;
+  --muted: #667085;
+  --border: #d5d9e2;
+  --accent: #2f5fe0;
+  --danger: #c4321f;
+  font-family: system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
+  font-size: 18px;
+  color: var(--text);
+  background: var(--bg);
+}
+
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+}
+
+main {
+  max-width: 640px;
+  margin: 56px auto;
+  padding: 36px 40px 28px;
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: 16px;
+  box-shadow: 0 8px 24px rgb(28 34 48 / 0.06);
+}
+
+h1 {
+  margin: 0 0 24px;
+  font-size: 2.2rem;
+  letter-spacing: -0.02em;
+}
+
+form > label {
+  display: block;
+  margin-bottom: 8px;
+  font-size: 0.85rem;
+  font-weight: 600;
+  color: var(--muted);
+}
+
+.add-row {
+  display: flex;
+  gap: 12px;
+}
+
+input:not([type]) {
+  flex: 1;
+  min-width: 0;
+  padding: 14px 16px;
+  font: inherit;
+  color: inherit;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+}
+
+button[type='submit'] {
+  padding: 0 28px;
+  font: inherit;
+  font-weight: 600;
+  color: #fff;
+  background: var(--accent);
+  border: 0;
+  border-radius: 10px;
+  cursor: pointer;
+}
+
+button[type='submit']:hover {
+  filter: brightness(0.93);
+}
+
+:focus-visible {
+  outline: 3px solid rgb(47 95 224 / 0.4);
+  outline-offset: 2px;
+}
+
+ul {
+  margin: 24px 0 0;
+  padding: 0;
+  list-style: none;
+}
+
+li {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  border-bottom: 1px solid var(--border);
+}
+
+li label {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  min-width: 0;
+  padding: 16px 4px;
+  cursor: pointer;
+}
+
+li span {
+  overflow-wrap: anywhere;
+}
+
+input[type='checkbox'] {
+  flex: none;
+  width: 24px;
+  height: 24px;
+  accent-color: var(--accent);
+  cursor: pointer;
+}
+
+li.done span {
+  color: var(--muted);
+  text-decoration: line-through;
+}
+
+.delete {
+  flex: none;
+  width: 40px;
+  height: 40px;
+  font-size: 1.6rem;
+  line-height: 1;
+  color: var(--muted);
+  background: none;
+  border: 0;
+  border-radius: 8px;
+  cursor: pointer;
+}
+
+.delete:hover {
+  color: var(--danger);
+  background: #fdecea;
+}
+
+.empty {
+  margin: 28px 0 8px;
+  padding: 32px 16px;
+  text-align: center;
+  color: var(--muted);
+  border: 1px dashed var(--border);
+  border-radius: 12px;
+}
+
+.count {
+  margin: 20px 0 0;
+  font-size: 0.9rem;
+  color: var(--muted);
+}
