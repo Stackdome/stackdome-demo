@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest"
 
-import { byInstallOrder, installNames, isTheme, registryFileName, registryFileOfEntry, registryItems, shadcnCommand } from "./registry"
+import { byInstallOrder, firstLines, installNames, isTheme, itemCode, themeCss, registryFileName, registryFileOfEntry, registryItems, shadcnCommand } from "./registry"
 
 describe("registryFileName", () => {
   describe("given a lower-case, dashed .json name", () => {
@@ -92,5 +92,51 @@ describe("shadcnCommand", () => {
 
   it("does not double the slash of an origin that ends in one", () => {
     expect(shadcnCommand("http://localhost:3220/", "m1", "theme")).toBe("npx shadcn@latest add http://localhost:3220/r/m1/theme.json")
+  })
+})
+
+describe("itemCode", () => {
+  it("is the first file's content, named by the base name of its path", () => {
+    const item = { files: [{ path: "components/ui/pricing-cards.tsx", content: "export function PricingCards() {}\n" }, { path: "x.ts", content: "second" }] }
+    expect(itemCode(item)).toEqual({ fileName: "pricing-cards.tsx", content: "export function PricingCards() {}\n" })
+  })
+
+  it("names a file with no path", () => {
+    expect(itemCode({ files: [{ content: "x" }] })?.fileName).toBe("component.tsx")
+  })
+
+  it.each([null, {}, { files: [] }, { files: [{ path: "a.tsx" }] }, { files: [{ path: "a.tsx", content: "  " }] }, { files: "a.tsx" }])("is null for %j", (item) => {
+    expect(itemCode(item)).toBeNull()
+  })
+})
+
+describe("themeCss", () => {
+  it("writes cssVars.theme as a Tailwind v4 @theme block", () => {
+    const item = { cssVars: { theme: { "color-primary": "#635bff", "--radius-card": "8px", "font-sans": "Inter, sans-serif" } } }
+    expect(themeCss([item])).toBe("@theme {\n  --color-primary: #635bff;\n  --radius-card: 8px;\n  --font-sans: Inter, sans-serif;\n}")
+  })
+
+  it("merges several items, the first to name a variable winning", () => {
+    const css = themeCss([{ cssVars: { theme: { "color-primary": "#111111" } } }, { cssVars: { theme: { "color-primary": "#222222", "color-ink": "#333333" } } }])
+    expect(css).toBe("@theme {\n  --color-primary: #111111;\n  --color-ink: #333333;\n}")
+  })
+
+  it("drops a name or value that could break out of the block", () => {
+    const item = { cssVars: { theme: { "ok": "1px", "bad name": "1px", "x": "red; } body { display: none", "y": "a\nb", "z": 4 } } }
+    expect(themeCss([item])).toBe("@theme {\n  --ok: 1px;\n}")
+  })
+
+  it.each([[[]], [[null]], [[{ cssVars: {} }]], [[{ cssVars: { theme: "x" } }]], [[{ cssVars: { theme: {} } }]]])("is null when there is no theme: %j", (items) => {
+    expect(themeCss(items)).toBeNull()
+  })
+})
+
+describe("firstLines", () => {
+  it("cuts a long text and says so", () => {
+    expect(firstLines("a\nb\nc\nd", 2)).toEqual({ text: "a\nb", cut: true })
+  })
+
+  it("leaves a short text whole, without its trailing blank lines", () => {
+    expect(firstLines("a\nb\n\n", 2)).toEqual({ text: "a\nb", cut: false })
   })
 })

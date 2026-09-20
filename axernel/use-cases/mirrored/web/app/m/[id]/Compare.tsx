@@ -67,6 +67,34 @@ function Picture({ id, name, alt }: { id: string; name: ArtifactName; alt: strin
   )
 }
 
+const VIEWS = { compare: "Compare", live: "Live" } as const
+const WIDTHS = { desktop: "Desktop", phone: "Phone" } as const
+
+/** Text toggles, as on the home page: a radio group, the chosen word heavy. */
+function Words<T extends string>({ legend, options, value, onChange }: { legend: string; options: Record<T, string>; value: T; onChange: (value: T) => void }) {
+  return (
+    <fieldset className="words">
+      <legend className="sr-only">{legend}</legend>
+      {(Object.keys(options) as T[]).map((name) => (
+        <label key={name} className="word">
+          <input type="radio" name={legend} value={name} checked={value === name} onChange={() => onChange(name)} />
+          <span>{options[name]}</span>
+        </label>
+      ))}
+    </fieldset>
+  )
+}
+
+/** The rebuilt component itself, not a picture of it: preview.html in an empty
+ *  sandbox, at the pane's width or a phone's, so it can be seen to respond. */
+function Live({ id, width }: { id: string; width: keyof typeof WIDTHS }) {
+  return (
+    <div className="live-fit">
+      <iframe className={`live-frame live-${width}`} src={artifactUrl(id, "preview")} sandbox="" title="The rebuilt component, live" />
+    </div>
+  )
+}
+
 /** A corner label that opens its picture large. */
 function Corner({ name, onOpen, children }: { name: ArtifactName; onOpen: OpenShot; children: ReactNode }) {
   return (
@@ -80,7 +108,9 @@ function Corner({ name, onOpen, children }: { name: ArtifactName; onOpen: OpenSh
  *  both sides exist, one picture when only one does, the pixel diff on request. */
 export function Compare({ mirror, onOpen }: { mirror: Mirror; onOpen: OpenShot }) {
   const [showDiff, setShowDiff] = useState(false)
-  const { original, rebuild, diff, page } = mirror.artifacts
+  const [view, setView] = useState<keyof typeof VIEWS>("compare")
+  const [width, setWidth] = useState<keyof typeof WIDTHS>("desktop")
+  const { original, rebuild, diff, page, preview } = mirror.artifacts
   const id = mirror.id
 
   if (mirror.mode === "brand" && mirror.artifacts.report) {
@@ -120,12 +150,32 @@ export function Compare({ mirror, onOpen }: { mirror: Mirror; onOpen: OpenShot }
     )
   }
 
-  if (!original && !rebuild) return <p className="stage-note">No pictures came back, so there is nothing to compare.</p>
+  if (!original && !rebuild && !preview) return <p className="stage-note">No pictures came back, so there is nothing to compare.</p>
   const both = original && rebuild
   const only: ArtifactName = original ? "original" : "rebuild"
+  // With no pictures at all, the live component is the one thing there is to show.
+  const live = preview && (view === "live" || (!original && !rebuild))
+
+  // The switch only exists when there is something to switch to.
+  const bar = preview ? (
+    <div className="stage-bar">
+      {original || rebuild ? <Words legend="View" options={VIEWS} value={view} onChange={setView} /> : <span />}
+      {live ? <Words legend="Width" options={WIDTHS} value={width} onChange={setWidth} /> : null}
+    </div>
+  ) : null
+
+  if (live) {
+    return (
+      <figure className="compare-figure">
+        {bar}
+        <Live id={id} width={width} />
+      </figure>
+    )
+  }
 
   return (
     <figure className="compare-figure">
+      {bar}
       <figcaption className="compare-caption">
         {showDiff ? (
           <Corner name="diff" onOpen={onOpen}>

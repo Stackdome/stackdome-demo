@@ -108,7 +108,7 @@ describe("newMirrorRow and toMirror", () => {
     })
 
     it("offers only artifacts that are available and have an id", () => {
-      expect(toMirror(row).artifacts).toEqual({ bundle: false, registry: false, tokens: false, report: false, original: true, rebuild: false, diff: false, page: false })
+      expect(toMirror(row).artifacts).toEqual({ bundle: false, registry: false, tokens: false, report: false, preview: false, skin: false, original: true, rebuild: false, diff: false, page: false })
       expect(availableArtifactId(row, "original")).toBe("artifact-1")
       expect(availableArtifactId(row, "rebuild")).toBeNull()
     })

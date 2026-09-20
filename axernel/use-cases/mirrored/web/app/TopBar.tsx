@@ -1,8 +1,10 @@
 import Link from "next/link"
 
 import { MirrorMark } from "./shapes"
+import { ThemeToggle } from "./ThemeToggle"
+import { Wearing } from "./Wearing"
 
-/** The one bar every page shares: wordmark and credit left, two links right. */
+/** The one bar every page shares: wordmark and credit left; links and the theme toggle right. */
 export function TopBar() {
   return (
     <header className="bar">
@@ -19,8 +21,10 @@ export function TopBar() {
         </p>
       </div>
       <nav className="bar-links" aria-label="Main">
+        <Wearing />
         <Link href="/">New</Link>
         <Link href="/archive">Archive</Link>
+        <ThemeToggle />
       </nav>
     </header>
   )

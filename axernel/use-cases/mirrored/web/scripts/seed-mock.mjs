@@ -213,7 +213,22 @@ const REPORT = `<!doctype html><meta charset="utf-8"><title>MOCK site report</ti
 <section><h2 style="font-size:28px">Type</h2><p style="font-size:48px;margin:0">Display 48</p><p style="font-size:28px;margin:0">Heading 28</p><p>Body 16. Scripts cannot run in here.</p></section>
 <script>document.body.innerHTML = "SCRIPT RAN: the sandbox is broken"</script>`
 
+// What the sandbox renders the rebuilt component to: one self-contained file, no scripts needed.
+const PREVIEW = `<!doctype html><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>MOCK preview</title>
+<style>body{margin:0;padding:32px;font:16px/1.5 Inter,system-ui,sans-serif;background:#f6f9fc;color:#0a2540}
+h2{font-size:28px;margin:0 0 4px}p{margin:0;color:#425466}.plans{display:grid;grid-template-columns:repeat(3,1fr);gap:12px;margin-top:24px}
+.plan{background:#fff;border-radius:8px;padding:20px;display:grid;gap:10px}.plan.on{background:#0a2540;color:#fff}.plan.on p{color:#adbdcc}
+.price{font-size:32px;font-weight:700}.plan b{display:block;text-align:center;border-radius:999px;background:#635bff;color:#fff;padding:8px;margin-top:8px}
+@media (max-width:600px){body{padding:16px}.plans{grid-template-columns:1fr}}</style>
+<h2>MOCK pricing</h2><p>Seeded sample. A real preview is the rebuilt React component, rendered.</p>
+<div class="plans">${["Starter|$0", "Team|$29", "Scale|$99"].map((plan, at) => `<div class="plan${at === 1 ? " on" : ""}"><span>${plan.split("|")[0]}</span><span class="price">${plan.split("|")[1]}</span><p>Everything you need to begin.</p><b>Choose</b></div>`).join("")}</div>`
+
+// A look far from Bauhaus, so wearing it is unmistakable.
+const SKIN = { background: "#0b0f0c", text: "#e8f5e9", primary: "#00e676", accents: ["#40c4ff", "#ffd54f"], fontFamily: "'Space Grotesk', ui-monospace, monospace", radius: "4px" }
+
 const files = {
+  "preview.html": Buffer.from(PREVIEW),
+  "skin.json": Buffer.from(JSON.stringify(SKIN, null, 2)),
   "report.html": Buffer.from(REPORT),
   "page.png": wholePage().png(),
   "original.png": original.png(),
@@ -245,7 +260,7 @@ insertMirror({
   result: JSON.stringify(RESULT),
   error: null,
   usage: null,
-  artifacts: JSON.stringify(Object.fromEntries(["bundle", "registry", "tokens", "report", "original", "rebuild", "diff", "page"].map(available))),
+  artifacts: JSON.stringify(Object.fromEntries(["bundle", "registry", "tokens", "report", "preview", "skin", "original", "rebuild", "diff", "page"].map(available))),
   created_at: new Date().toISOString(),
 })
 for (const event of EVENTS) insertEvent(ID, event.sequence, JSON.stringify(event))

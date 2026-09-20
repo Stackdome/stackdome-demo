@@ -64,7 +64,7 @@ export interface MirrorError {
 }
 
 /** Artifact names on the run. All optional: a failed mirror may have none. */
-export const ARTIFACT_NAMES = ["bundle", "registry", "tokens", "report", "original", "rebuild", "diff", "page"] as const
+export const ARTIFACT_NAMES = ["bundle", "registry", "tokens", "report", "preview", "skin", "original", "rebuild", "diff", "page"] as const
 export type ArtifactName = (typeof ARTIFACT_NAMES)[number]
 
 export interface Mirror {

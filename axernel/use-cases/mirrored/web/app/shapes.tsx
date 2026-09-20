@@ -8,7 +8,8 @@ import { DIAL_RADIUS, halfCirclePath, scoreDial } from "@/lib/scoreDial"
 const RED = "var(--red)"
 const BLUE = "var(--blue)"
 const YELLOW = "var(--yellow)"
-const GROUND = "var(--ground)"
+// The poster sits on a navy field, so its pale parts are whatever reads on navy.
+const PALE = "var(--on-navy)"
 
 /** One side of the poster, drawn left of the axis at x = 300. `dome` is the
  *  quarter-circle's colour: the one thing the reflection gets to change. */
@@ -17,7 +18,7 @@ function PosterSide({ dome }: { dome: string }) {
     <>
       <circle cx={130} cy={210} r={70} fill={YELLOW} />
       <path d="M 100 520 A 200 200 0 0 1 300 320 L 300 520 Z" fill={dome} />
-      <rect x={60} y={560} width={180} height={60} fill={GROUND} />
+      <rect x={60} y={560} width={180} height={60} fill={PALE} />
     </>
   )
 }
@@ -32,7 +33,7 @@ export function MirrorPoster(props: SVGProps<SVGSVGElement>) {
       <g transform="translate(600 0) scale(-1 1)">
         <PosterSide dome={BLUE} />
       </g>
-      <line x1={300} y1={0} x2={300} y2={800} stroke={GROUND} strokeWidth={2} />
+      <line x1={300} y1={0} x2={300} y2={800} stroke={PALE} strokeWidth={2} />
     </svg>
   )
 }

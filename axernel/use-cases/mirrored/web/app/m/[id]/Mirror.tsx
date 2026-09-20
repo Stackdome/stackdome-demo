@@ -17,6 +17,7 @@ import { Compare } from "./Compare"
 import { FieldNotes, foldFeed, type StoredEvent } from "./FieldNotes"
 import { ShotDialog, ShotStrip } from "./Shots"
 import { TokensPanel } from "./TokensPanel"
+import { WearButton } from "./WearButton"
 
 const STAGE_LABELS: Record<TrailStage, string> = {
   look: "Look",
@@ -156,6 +157,7 @@ function Summary({ mirror }: { mirror: Mirror }) {
           </p>
         </div>
       ) : null}
+      <WearButton mirror={mirror} />
       <h1 className="mirror-title">{mirrorLabel(mirror)}</h1>
       <dl className="facts">
         <div>

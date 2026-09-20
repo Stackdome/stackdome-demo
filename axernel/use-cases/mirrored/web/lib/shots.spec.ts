@@ -4,7 +4,7 @@ import { shotAfter, shotsOf } from "./shots"
 import type { Mirror } from "./types"
 
 const artifacts = (...names: string[]): Mirror["artifacts"] =>
-  ({ bundle: true, registry: true, tokens: true, report: true, original: false, rebuild: false, diff: false, page: false, ...Object.fromEntries(names.map((name) => [name, true])) }) as Mirror["artifacts"]
+  ({ bundle: true, registry: true, tokens: true, report: true, preview: true, skin: true, original: false, rebuild: false, diff: false, page: false, ...Object.fromEntries(names.map((name) => [name, true])) }) as Mirror["artifacts"]
 
 describe("shotsOf", () => {
   describe("given a section run with every picture", () => {

@@ -48,3 +48,46 @@ export function installNames(components: unknown, items: RegistryItem[]): string
 export function shadcnCommand(origin: string, mirrorId: string, name: string): string {
   return `npx shadcn@latest add ${origin.replace(/\/+$/, "")}/r/${mirrorId}/${name}.json`
 }
+
+// --- Copy-paste code, for projects without shadcn ------------------------------
+
+export interface ItemCode {
+  fileName: string
+  content: string
+}
+
+/** The source of a registry item's first file, named by the base name of its path. */
+export function itemCode(item: unknown): ItemCode | null {
+  const files = (item as { files?: unknown } | null)?.files
+  const file = (Array.isArray(files) ? files[0] : null) as { path?: unknown; content?: unknown } | null
+  if (typeof file?.content !== "string" || !file.content.trim()) return null
+  const fileName = typeof file.path === "string" ? (file.path.split("/").pop() ?? "") : ""
+  return { fileName: fileName || "component.tsx", content: file.content }
+}
+
+const THEME_NAME = /^[a-z0-9-]+$/i
+// A value may be any CSS value, but never one that closes the declaration or the block it is pasted into.
+const THEME_VALUE = /^[^;{}<>\n\r]{1,300}$/
+
+/** `cssVars.theme` of one or more items as a Tailwind v4 `@theme` block, or null
+ *  when there is nothing to put in it. The first item to name a variable wins. */
+export function themeCss(items: readonly unknown[]): string | null {
+  const theme = new Map<string, string>()
+  for (const item of items) {
+    const vars = (item as { cssVars?: { theme?: unknown } } | null)?.cssVars?.theme
+    if (typeof vars !== "object" || vars === null) continue
+    for (const [rawName, value] of Object.entries(vars)) {
+      const name = rawName.replace(/^--/, "")
+      if (!THEME_NAME.test(name) || typeof value !== "string" || !THEME_VALUE.test(value.trim()) || theme.has(name)) continue
+      theme.set(name, value.trim())
+    }
+  }
+  if (theme.size === 0) return null
+  return `@theme {\n${[...theme].map(([name, value]) => `  --${name}: ${value};`).join("\n")}\n}`
+}
+
+/** The first `lines` lines, and whether anything was cut. */
+export function firstLines(text: string, lines: number): { text: string; cut: boolean } {
+  const all = text.replace(/\n+$/, "").split("\n")
+  return all.length <= lines ? { text: all.join("\n"), cut: false } : { text: all.slice(0, lines).join("\n"), cut: true }
+}

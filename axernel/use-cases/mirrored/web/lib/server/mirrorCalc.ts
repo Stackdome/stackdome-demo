@@ -12,6 +12,8 @@ export const ARTIFACT_FILES: Record<ArtifactName, { fileName: string; contentTyp
   registry: { fileName: "registry.zip", contentType: "application/zip" },
   tokens: { fileName: "tokens.json", contentType: "application/json; charset=utf-8" },
   report: { fileName: "report.html", contentType: "text/html; charset=utf-8" },
+  preview: { fileName: "preview.html", contentType: "text/html; charset=utf-8" },
+  skin: { fileName: "skin.json", contentType: "application/json; charset=utf-8" },
   original: { fileName: "original.png", contentType: "image/png" },
   rebuild: { fileName: "rebuild.png", contentType: "image/png" },
   diff: { fileName: "diff.png", contentType: "image/png" },
