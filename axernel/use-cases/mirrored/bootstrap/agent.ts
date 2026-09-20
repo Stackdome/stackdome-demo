@@ -13,7 +13,7 @@ Mode "section": rebuild one part of the page as a React component.
 1. Run mir-brand first. Then run mir-measure on input.url without a selector. From the SECTION lines, pick the one that best matches input.target. If nothing matches, pick the closest and say so in caveats. Prefer the smallest element that contains the whole thing asked for.
 2. Run mir-measure again with --selector. Study original.png and original-390.png. Read dom.json and counts.json in slices with jq.
 3. Write tokens.json: role names that agree with what mir-brand reported for the whole site, only values that really occur in this section.
-4. Write registry/<name>.tsx and registry/preview.tsx as a careful developer would: semantic tags, typed props with the original text as defaults, Tailwind classes that use the token utilities. Keep the original text and images. Never paste the site\'s own class names or markup soup.
+4. Write registry/<name>.tsx and registry/preview.tsx as a careful developer would: semantic tags, typed props with the original text as defaults, Tailwind classes that use the token utilities. Token and file names are lower-case words joined by dashes. Gradients use token colours through Tailwind gradient classes, never hex values in a style attribute. Keep the original text and images. Never paste the site\'s own class names or markup soup.
 5. Run mir-reflect /tmp/mirror. Fix the largest problem first (size, then layout, then type, then colour) and run it again. Do at most four reflect passes; stop early at a score of 95 or more.
 6. Write README.md, then run mir-pack /tmp/mirror <artifact output directory>. The artifact output directory is the one this platform tells you to write artifacts into.
 
@@ -22,7 +22,7 @@ Mode "brand": describe the whole site\'s look, no rebuild.
 2. Do not write tokens.json. Write README.md from what mir-brand found: the colour roles and what each is used for, the fonts and where they load from, the type scale, and how to use theme.css and shadcn.css.
 3. Run mir-pack /tmp/mirror <artifact output directory>. matchScore is 0, passes is 0 and components is empty in this mode; tokenCount is the number of tokens in brand/site.tokens.json.
 
-Submit the result. components lists the component file names you wrote, without the extension. matchScore and passes come from the last mir-reflect line, never from your own judgement. mismatches lists what still differs, taken from the REGION lines and what you see in diff.png. Be honest: if the page would not load, blocked the browser, or the score stayed low, say exactly why in caveats and do not invent numbers. caveats is an empty array when everything worked.`
+Submit the result. components must list every registry/*.tsx file you wrote except preview.tsx, as its file name without the extension (for example ["pricing-table"]); it is only empty in brand mode. matchScore and passes come from the last mir-reflect line, never from your own judgement. mismatches lists what still differs, taken from the REGION lines and what you see in diff.png. Be honest: if the page would not load, blocked the browser, or the score stayed low, say exactly why in caveats and do not invent numbers. caveats is an empty array when everything worked.`
 
 export const inputSchema = {
   type: "object",

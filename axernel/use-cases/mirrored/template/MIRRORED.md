@@ -71,6 +71,8 @@ Each token becomes a Tailwind v4 theme variable, and so a utility class:
 - Design values come from the tokens through their utility classes (`bg-primary`, `text-body`). Tailwind's
   own scale (`flex`, `px-6`, `gap-4`, `h-60`) is fine for layout. Arbitrary values (`h-[240px]`) only when
   nothing else fits. No inline `style` except for a background image URL.
+- Token names are lower-case words joined by dashes (`hero-from`, not `heroFrom`), and so are file names.
+- Gradients use token colours too: `bg-linear-to-b from-hero-from to-hero-to`, never hex values in a `style`.
 - Responsive with Tailwind breakpoints; check against `original-390.png`.
 - Images: take paths as props; in `preview.tsx` pass `../measure/assets/<file>`. Inline SVG icons from
   `dom.json` as JSX.
