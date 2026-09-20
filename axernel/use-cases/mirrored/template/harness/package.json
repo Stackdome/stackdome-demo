@@ -1,0 +1,12 @@
+{
+  "name": "mirrored-harness",
+  "private": true,
+  "type": "module",
+  "dependencies": {
+    "@tailwindcss/cli": "^4.1.0",
+    "react": "^19.1.0",
+    "react-dom": "^19.1.0",
+    "tailwindcss": "^4.1.0",
+    "tsx": "^4.20.0"
+  }
+}

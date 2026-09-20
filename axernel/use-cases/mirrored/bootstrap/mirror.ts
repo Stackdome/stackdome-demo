@@ -11,7 +11,7 @@ const axernel = await authenticate()
 const mode = target.length ? "section" : "brand"
 const title = `${mode === "section" ? target.join(" ") : "Brand"} from ${new URL(url).hostname}`
 const session = await axernel.sessions.create(projectId, { agentId, checkpointingEnabled: false, metadata: { axernel: { title } } })
-const run = await axernel.runs.create(session.id, { input: { data: { url, mode, target: target.join(" "), framework: "html" } } })
+const run = await axernel.runs.create(session.id, { input: { data: { url, mode, target: target.join(" "), framework: "react" } } })
 console.log(`session ${session.id}\nrun ${run.id}\nwaiting...`)
 
 // The event stream would hit the SDK request timeout on a run this long, so poll instead.
