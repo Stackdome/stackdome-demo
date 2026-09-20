@@ -68,8 +68,10 @@ const STEP_SHAPES: Record<TrailStage, ReactNode> = {
   rebuild: <path d="M 2 35 A 22 22 0 0 1 46 35 Z" />,
   reflect: (
     <>
-      <path d="M 22 4 A 20 20 0 0 0 22 44 Z" />
-      <path d="M 26 4 A 20 20 0 0 1 26 44 Z" />
+      {/* One circle (centre 24,24, r 21) with a slit cut out of it, so the outline stays round.
+          Two whole half-circles moved apart would make it wider than tall. */}
+      <path d="M 22 3.1 A 21 21 0 0 0 22 44.9 Z" />
+      <path d="M 26 3.1 A 21 21 0 0 1 26 44.9 Z" />
     </>
   ),
 }
