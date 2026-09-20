@@ -35,16 +35,15 @@ const agent = existing
   ? await axernel.agents.update(project.id, existing.id, { templateId: template.id, configuration }, { expectedRevision: existing.revision })
   : await axernel.agents.create(project.id, { name: SMOKE_AGENT, templateId: template.id, configuration })
 
-const session = await axernel.sessions.create(project.id, { agentId: agent.id, checkpointingEnabled: false })
-const run = await axernel.runs.create(session.id, { input: { data: {} } })
-console.log(`run ${run.id}`)
-
-for await (const event of axernel.runs.events(run.id)) {
-  if (event.type === "run.status" || event.type === "stream.error") console.log(event.type, JSON.stringify(event.data).slice(0, 300))
-  else process.stdout.write(".")
+// `npm run smoke -- <runId>` re-attaches to a run instead of starting one. Polling only:
+// the SDK applies its request timeout to the whole event stream, which a first image pull outlasts.
+let runId = process.argv[2]
+if (!runId) {
+  const session = await axernel.sessions.create(project.id, { agentId: agent.id, checkpointingEnabled: false })
+  runId = (await axernel.runs.create(session.id, { input: { data: {} } })).id
 }
+console.log(`run ${runId}`)
 
-const finished = await axernel.runs.wait(run.id, { timeoutMs: 20 * 60 * 1_000 })
-console.log(`\nstatus ${finished.status}`)
+const finished = await axernel.runs.wait(runId, { timeoutMs: 25 * 60 * 1_000, pollIntervalMs: 5_000 })
+console.log(`status ${finished.status}`)
 console.log(JSON.stringify({ response: finished.response, error: finished.error, artifactOutputs: finished.artifactOutputs }, null, 2))
-await axernel.sessions.close(project.id, session.id)

@@ -5,6 +5,7 @@ import { writeFileSync } from "node:fs"
 import { AGENT_NAME, artifacts, inputSchema, instructions, limits, outputSchema } from "./agent.js"
 import { authenticate, baseUrl, email, ensureModelProvider, ensureProject, ensureTemplate, find, password, requireEnv } from "./shared.js"
 
+const GITHUB_MCP_URL = "https://api.githubcopilot.com/mcp/"
 const githubToken = requireEnv("GITHUB_TOKEN")
 
 const axernel = await authenticate()
@@ -19,6 +20,14 @@ const secret = existingSecret
   : await axernel.secrets.create(project.id, secretRequest)
 
 const githubCredential = { secret: { secretId: secret.id, key: "token" } }
+
+// Axernel builds before the MCPAuthentication contract take a prefixed Authorization header binding.
+// The served schema says which one this server accepts. Drop the old shape once no local server runs it.
+const liveSchema = await (await fetch(`${baseUrl}/openapi.yaml`)).text()
+const githubRemote = liveSchema.includes("MCPAuthentication:")
+  ? { url: GITHUB_MCP_URL, authentication: { type: "bearer" as const, credential: githubCredential } }
+  : ({ url: GITHUB_MCP_URL, headerBindings: { Authorization: { ...githubCredential, prefix: "Bearer " } } } as never)
+
 const configuration = {
   harness: "opencode" as const,
   modelProviderId: provider.id,
@@ -26,14 +35,7 @@ const configuration = {
   contracts: { input: { schema: inputSchema }, output: { schema: outputSchema } },
   limits,
   environmentCredentialBindings: { GH_TOKEN: githubCredential },
-  mcpServers: {
-    github: {
-      remote: {
-        url: "https://api.githubcopilot.com/mcp/",
-        authentication: { type: "bearer" as const, credential: githubCredential },
-      },
-    },
-  },
+  mcpServers: { github: { remote: githubRemote } },
   artifacts,
 }
 

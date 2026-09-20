@@ -5,7 +5,7 @@ export const baseUrl = process.env.AXERNEL_BASE_URL ?? "http://127.0.0.1:8000"
 export const email = process.env.WTP_EMAIL ?? "developer@axernel.com"
 export const password = process.env.WTP_PASSWORD ?? "password"
 const projectName = "HappyWalkthrough"
-const model = process.env.WTP_MODEL ?? "anthropic/claude-sonnet-4.5"
+const model = process.env.WTP_MODEL ?? "deepseek/deepseek-v4.1-flash"
 
 export function requireEnv(name: string): string {
   const value = process.env[name]

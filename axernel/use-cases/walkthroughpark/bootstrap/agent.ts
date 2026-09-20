@@ -35,9 +35,9 @@ export const inputSchema = {
   additionalProperties: false,
   required: ["source", "maxSeconds"],
   properties: {
-    source: { type: "string", description: "GitHub repository URL or pull request URL" },
-    subdir: { type: "string", description: "Directory of the app inside the repository" },
-    instruction: { type: "string", description: "What the video should show" },
+    source: { type: "string" },
+    subdir: { type: "string" },
+    instruction: { type: "string" },
     maxSeconds: { type: "integer", enum: [30, 60, 90] },
   },
 }
