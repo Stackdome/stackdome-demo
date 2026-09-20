@@ -4,7 +4,8 @@
   "type": "module",
   "scripts": {
     "setup": "tsx --env-file-if-exists=.env setup.ts",
-    "mirror": "tsx --env-file-if-exists=.env mirror.ts"
+    "mirror": "tsx --env-file-if-exists=.env mirror.ts",
+    "artifacts": "tsx --env-file-if-exists=.env fetch-artifacts.ts"
   },
   "dependencies": {
     "@axernel/sdk": "file:/Users/akshaysasidharan/code/axernel/sdk/typescript"
