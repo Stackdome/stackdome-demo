@@ -7,8 +7,11 @@ COPY harness/package.json /opt/mirrored/harness/package.json
 RUN cd /opt/mirrored/harness && npm install --no-audit --no-fund
 COPY harness/ssr.mjs /opt/mirrored/harness/ssr.mjs
 
-# Dembrandt (MIT) measures a whole site's design system; it uses the browser already in this image.
-RUN npm install --global dembrandt@0.35.0 --no-audit --no-fund
+# Dembrandt (MIT) measures a whole site's design system. It wants its own Chromium revision, and
+# Playwright's installer deletes revisions it does not know, so its browser lives in its own folder
+# and is fetched here, never at run time.
+RUN npm install --global dembrandt@0.35.0 --no-audit --no-fund \
+    && PLAYWRIGHT_BROWSERS_PATH=/opt/dembrandt-browsers dembrandt install-browser
 
 COPY mir-brand /usr/local/bin/mir-brand
 COPY mir-measure.mjs /usr/local/bin/mir-measure

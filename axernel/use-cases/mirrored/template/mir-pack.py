@@ -10,7 +10,10 @@ and, on a full pack, builds a shadcn registry (registry.zip) from <workDir>/regi
 zips everything (bundle.zip) and copies the files the platform collects into <artifactDir>.
 Last line is MIR_OK or MIR_ERROR: <reason>.
 """
+import base64
 import json
+import mimetypes
+import re
 import shutil
 import sys
 import zipfile
@@ -126,6 +129,50 @@ def registry_items(work, theme):
     return items
 
 
+def write_preview(work, out):
+    """preview.html: the last render mir-reflect made, as ONE file (styles and images inlined),
+    so an app can show the live component in a sandboxed frame."""
+    build = work / "build"
+    if not (build / "index.html").exists():
+        return
+    html = (build / "index.html").read_text()
+    css = (build / "styles.css").read_text() if (build / "styles.css").exists() else ""
+
+    def inline(match):
+        target = (build / match.group(2)).resolve()
+        if not target.is_file() or target.stat().st_size > 1_500_000:
+            return match.group(0)
+        kind = mimetypes.guess_type(target.name)[0] or "application/octet-stream"
+        return f"{match.group(1)}data:{kind};base64,{base64.b64encode(target.read_bytes()).decode()}"
+
+    local = r"""((?:src|href)=["']|url\(["']?)((?:\.\./|\./)?[\w./-]+\.(?:png|jpe?g|gif|webp|svg|avif|woff2?))"""
+    html = html.replace('<link rel="stylesheet" href="styles.css">', f"<style>{re.sub(local, inline, css)}</style>")
+    (out / "preview.html").write_text(re.sub(local, inline, html))
+
+
+def write_skin(work, out):
+    """skin.json: the site's few defining values, from what mir-brand measured, small enough
+    for an app to re-skin itself with: background, text, primary, accents, font, radius."""
+    tokens_path = work / "brand" / "site.tokens.json"
+    if not tokens_path.exists():
+        return
+    tokens = json.loads(tokens_path.read_text())
+    hex_of = lambda token: (token.get("$value") or {}).get("hex") if isinstance(token.get("$value"), dict) else token.get("$value")
+    semantic = {name: hex_of(token) for name, token in tokens.get("color", {}).get("semantic", {}).items() if isinstance(token, dict)}
+    palette = [hex_of(token) for token in tokens.get("color", {}).get("palette", {}).values() if isinstance(token, dict)]
+    families = [token.get("$value") for token in tokens.get("typography", {}).get("font-family", {}).values() if isinstance(token, dict)]
+    radii = [css_value(token["$value"]) for token in tokens.get("radius", {}).values() if isinstance(token, dict) and "$value" in token]
+    skin = {
+        "background": semantic.get("background"),
+        "text": semantic.get("text"),
+        "primary": semantic.get("primary"),
+        "accents": [c for c in palette if c and c not in (semantic.get("background"), semantic.get("text"))][:4],
+        "fontFamily": css_value(families[0]) if families else None,
+        "radius": radii[0] if radii else None,
+    }
+    (out / "skin.json").write_text(json.dumps(skin, indent=2))
+
+
 def pack_brand(work, out):
     """Brand mode: no component was written, so the bundle is what mir-brand measured."""
     brand = work / "brand"
@@ -143,6 +190,7 @@ def pack_brand(work, out):
         shutil.copy(brand / "report.html", out / "report.html")
     if (work / "measure" / "page.png").exists():
         shutil.copy(work / "measure" / "page.png", out / "page.png")
+    write_skin(work, out)
     print(f"brand bundle: {(out / 'bundle.zip').stat().st_size // 1024} KB")
     print("MIR_OK")
 
@@ -180,6 +228,8 @@ def main(work_dir, target):
     for name in COLLECTED:
         if (work / "measure" / name).exists():
             shutil.copy(work / "measure" / name, out / name)
+    write_preview(work, out)
+    write_skin(work, out)
 
     print(f"tokens: {len(theme)}  components: {len(items)}  bundle: {(out / 'bundle.zip').stat().st_size // 1024} KB")
     print("MIR_OK")

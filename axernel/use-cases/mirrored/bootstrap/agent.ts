@@ -67,6 +67,8 @@ export const artifacts = [
   { name: "bundle", fileName: "bundle.zip", mediaType: "application/zip", required: false },
   { name: "registry", fileName: "registry.zip", mediaType: "application/zip", required: false },
   { name: "tokens", fileName: "tokens.json", mediaType: "application/json", required: false },
+  { name: "preview", fileName: "preview.html", mediaType: "text/html", required: false },
+  { name: "skin", fileName: "skin.json", mediaType: "application/json", required: false },
   { name: "report", fileName: "report.html", mediaType: "text/html", required: false },
   { name: "original", fileName: "original.png", mediaType: "image/png", required: false },
   { name: "rebuild", fileName: "rebuild.png", mediaType: "image/png", required: false },

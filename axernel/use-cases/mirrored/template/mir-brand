@@ -5,7 +5,8 @@
 # theme.css (Tailwind v4 @theme), shadcn.css (shadcn/ui theme), report.html (self-contained report).
 # Prints a short summary. Last line is MIR_OK or MIR_ERROR: <reason>.
 set -uo pipefail
-export PLAYWRIGHT_BROWSERS_PATH="${PLAYWRIGHT_BROWSERS_PATH:-/ms-playwright}"
+# Its own browser folder: see the Dockerfile. The harness drops image ENV, so it is set here.
+export PLAYWRIGHT_BROWSERS_PATH=/opt/dembrandt-browsers
 
 url="${1:-}"; work="${2:-}"
 [ -n "$url" ] && [ -n "$work" ] || { echo "MIR_ERROR: usage: mir-brand <url> <workDir>"; exit 1; }
