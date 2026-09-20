@@ -156,6 +156,18 @@ html::-webkit-scrollbar-thumb:hover,
   }
 }
 
+/* The rail's bar sat against its border and read as a second, heavier border.
+   It still scrolls; the list running off the bottom edge is cue enough. */
+.rail,
+.rail-body {
+  scrollbar-width: none;
+}
+
+.rail::-webkit-scrollbar,
+.rail-body::-webkit-scrollbar {
+  display: none;
+}
+
 /* --- Frame: a rail of past walks beside the page -------------------------- */
 
 .shell {
