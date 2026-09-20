@@ -1,6 +1,6 @@
 import { configPath, isConfigured } from "@/lib/server/config"
 
-import { Squiggle, Sun, Tree } from "./doodles"
+import { Park, Squiggle, Sun } from "./doodles"
 import { GateForm } from "./GateForm"
 
 export const dynamic = "force-dynamic"
@@ -29,7 +29,7 @@ export default function GatePage() {
         </section>
       )}
 
-      <Tree className="doodle doodle-tree" />
+      <Park className="doodle doodle-park" />
     </div>
   )
 }

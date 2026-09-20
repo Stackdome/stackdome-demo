@@ -24,9 +24,9 @@ export function Signpost({ fill = "var(--card)", checked = false, ...props }: Do
   )
 }
 
-export function Tree(props: DoodleProps) {
+function TreeParts() {
   return (
-    <svg viewBox="0 0 90 120" width="90" height="120" aria-hidden="true" {...props}>
+    <>
       <path d="M43 70 C44.5 86 42 100 44 114" {...stroke} />
       <path d="M49 72 C48 88 50.5 100 49 114" {...stroke} />
       <path d="M30 115 C42 113 54 113.6 64 115" {...stroke} />
@@ -37,19 +37,35 @@ export function Tree(props: DoodleProps) {
       />
       <path d="M33 34 C37 30 42 30 45 34" {...stroke} strokeWidth={2} opacity={0.6} />
       <path d="M52 50 C56 46 61 47 63 51" {...stroke} strokeWidth={2} opacity={0.6} />
+    </>
+  )
+}
+
+export function Tree(props: DoodleProps) {
+  return (
+    <svg viewBox="0 0 90 120" width="90" height="120" aria-hidden="true" {...props}>
+      <TreeParts />
     </svg>
   )
 }
 
-export function Bench(props: DoodleProps) {
+function BenchParts() {
   return (
-    <svg viewBox="0 0 150 80" width="150" height="80" aria-hidden="true" {...props}>
+    <>
       <path d="M14 14 C52 11.5 98 13 137 12 L138 24 C98 25.5 52 24 13.5 26 Z" {...stroke} fill="var(--clay)" />
       <path d="M13 31 C52 29 98 30.5 138 29.5 L138.6 40 C98 41.4 52 40 12.6 42 Z" {...stroke} fill="var(--clay)" />
       <path d="M7 50 C50 47.6 100 49 144 47.6 L145 57 C100 58.6 50 57 6.4 59 Z" {...stroke} fill="var(--sun)" />
       <path d="M24 59 C23 65 24.6 71 23.4 77" {...stroke} />
       <path d="M127 58 C128 64 126.4 71 127.6 77" {...stroke} />
       <path d="M26 26 L26 31 M125 25 L125 30 M27 42 L26.4 49 M124 41 L124.6 48" {...stroke} />
+    </>
+  )
+}
+
+export function Bench(props: DoodleProps) {
+  return (
+    <svg viewBox="0 0 150 80" width="150" height="80" aria-hidden="true" {...props}>
+      <BenchParts />
     </svg>
   )
 }
@@ -84,6 +100,58 @@ export function Highlighter({ color = "var(--sun)", ...props }: DoodleProps & { 
   return (
     <svg viewBox="0 0 300 40" width="100%" height="100%" preserveAspectRatio="none" aria-hidden="true" {...props}>
       <path d="M6 12 C 60 5, 130 9, 294 6 L 297 30 C 210 37, 120 31, 4 35 Z" fill={color} />
+    </svg>
+  )
+}
+
+function Bush({ x, y = 88 }: { x: number; y?: number }) {
+  return (
+    <g transform={`translate(${x} ${y})`}>
+      <path d="M2 39 C-4 25 9 14 22 20 C27 5 50 5 55 19 C69 13 82 26 75 39 Z" {...stroke} fill="var(--grass)" />
+      <path d="M24 28 C28 25 32 25 35 28" {...stroke} strokeWidth={2} opacity={0.6} />
+    </g>
+  )
+}
+
+function Flower({ x, fill, tall = 24 }: { x: number; fill: string; tall?: number }) {
+  return (
+    <g transform={`translate(${x} 127)`}>
+      <path d={`M0 0 C1.5 ${-tall / 3} -1.5 ${(-tall * 2) / 3} 0 ${-tall}`} {...stroke} strokeWidth={2} />
+      <path d={`M0 ${-tall / 3} C4 ${-tall / 3 - 5} 8 ${-tall / 3 - 4} 9 ${-tall / 3 - 1}`} {...stroke} strokeWidth={2} />
+      <circle cx="0" cy={-tall} r="6" {...stroke} strokeWidth={2} fill={fill} />
+      <circle cx="0" cy={-tall} r="1.8" fill="var(--ink)" />
+    </g>
+  )
+}
+
+/** The whole park in one strip: trees, bushes, flowers, a bench, two birds. */
+export function Park(props: DoodleProps) {
+  return (
+    <svg viewBox="0 0 680 140" aria-hidden="true" {...props}>
+      <path d="M150 30 C154 25 158 25 161 30 C164 25 168 25 172 30" {...stroke} strokeWidth={2} />
+      <path d="M408 46 C411 42 414 42 416 46 C418 42 421 42 424 46" {...stroke} strokeWidth={2} />
+      <g transform="translate(2 13)">
+        <TreeParts />
+      </g>
+      <Bush x={92} />
+      <Flower x={186} fill="var(--clay)" />
+      <Flower x={204} fill="var(--sun)" tall={16} />
+      <Flower x={226} fill="var(--sky)" tall={28} />
+      <g transform="translate(262 72) scale(0.7)">
+        <BenchParts />
+      </g>
+      <Flower x={392} fill="var(--sun)" tall={26} />
+      <Flower x={410} fill="var(--clay)" tall={17} />
+      <g transform="translate(428 46) scale(0.7)">
+        <TreeParts />
+      </g>
+      <Bush x={500} />
+      <Flower x={590} fill="var(--sky)" tall={20} />
+      <g transform="translate(598 29) scale(0.85)">
+        <TreeParts />
+      </g>
+      <path d="M4 128 C120 125 240 130 360 127 C480 124.5 580 129 676 127" {...stroke} />
+      <path d="M244 127 l-3 -8 M247 127 l0 -10 M250 127 l3 -8 M474 127 l-3 -8 M477 127 l0 -10 M480 127 l3 -8" {...stroke} strokeWidth={2} />
     </svg>
   )
 }

@@ -618,8 +618,22 @@ html::-webkit-scrollbar-thumb:hover,
   gap: 0.75rem;
 }
 
-.doodle-tree {
-  margin: 0 0 0 auto;
+/* The park strip stands on the bottom edge of the gate, however tall the window. */
+.page:has(.gate) {
+  display: flex;
+  flex-direction: column;
+}
+
+.gate {
+  flex: 1;
+  width: 100%;
+  grid-template-rows: auto auto 1fr;
+}
+
+.doodle-park {
+  align-self: end;
+  width: 100%;
+  height: clamp(84px, 15vh, 140px);
 }
 
 /* The gate should sit in one screen on a laptop: no scrolling to reach the button. */
@@ -642,8 +656,8 @@ html::-webkit-scrollbar-thumb:hover,
     padding: 1.25rem 1.5rem;
   }
 
-  .doodle-tree {
-    display: none;
+  .gate-hero {
+    padding-top: 0.5rem;
   }
 }
 
