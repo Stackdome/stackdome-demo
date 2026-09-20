@@ -1,14 +1,14 @@
 // Proves the sandbox image works with the Axernel runtime on Modal, without GitHub access:
 // an agent renders the bundled sample demo and submits the video. Usage: npm run smoke
 import { artifacts } from "./agent.js"
-import { authenticate, ensureModelProvider, ensureProject, ensureTemplate, find } from "./shared.js"
+import { authenticate, ensureAgent, ensureModelProvider, ensureProject, ensureTemplate, requireEnv } from "./shared.js"
 
 const SMOKE_AGENT = "walkthrough-smoke"
 
 const axernel = await authenticate()
 const project = await ensureProject(axernel)
 const provider = await ensureModelProvider(axernel)
-const template = await ensureTemplate(axernel)
+const template = await ensureTemplate(axernel, requireEnv("WTP_IMAGE_REF"))
 
 const configuration = {
   harness: "opencode" as const,
@@ -30,16 +30,13 @@ const configuration = {
   artifacts,
 }
 
-const existing = await find(axernel.agents.iterate(project.id), (candidate) => candidate.name === SMOKE_AGENT)
-const agent = existing
-  ? await axernel.agents.update(project.id, existing.id, { templateId: template.id, configuration }, { expectedRevision: existing.revision })
-  : await axernel.agents.create(project.id, { name: SMOKE_AGENT, templateId: template.id, configuration })
+const agent = await ensureAgent(axernel, project.id, { name: SMOKE_AGENT, templateId: template.id, configuration })
 
 // `npm run smoke -- <runId>` re-attaches to a run instead of starting one. Polling only:
 // the SDK applies its request timeout to the whole event stream, which a first image pull outlasts.
 let runId = process.argv[2]
 if (!runId) {
-  const session = await axernel.sessions.create(project.id, { agentId: agent.id, checkpointingEnabled: false })
+  const session = await axernel.sessions.create(project.id, { agentId: agent.id, checkpointingEnabled: false, metadata: { axernel: { title: "WalkThroughPark smoke render" } } })
   runId = (await axernel.runs.create(session.id, { input: { data: {} } })).id
 }
 console.log(`run ${runId}`)

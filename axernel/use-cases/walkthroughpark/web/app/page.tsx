@@ -1,8 +1,7 @@
 import Link from "next/link"
 
-import { configPath, isConfigured } from "@/lib/server/axernel"
-import { listWalks } from "@/lib/server/db"
-import { toWalkthrough } from "@/lib/server/walkthroughs"
+import { configPath, isConfigured } from "@/lib/server/config"
+import { listWalkthroughs } from "@/lib/server/walkthroughs"
 import type { Walkthrough } from "@/lib/types"
 
 import { Bench, Squiggle, Sun, Tree } from "./doodles"
@@ -30,7 +29,7 @@ const shortSource = (walk: Walkthrough): string => walk.source.replace("https://
 
 export default function GatePage() {
   const configured = isConfigured()
-  const walks = listWalks().map(toWalkthrough)
+  const walks = listWalkthroughs()
 
   return (
     <div className="gate">

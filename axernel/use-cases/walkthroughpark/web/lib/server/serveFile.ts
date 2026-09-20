@@ -2,7 +2,8 @@ import { createReadStream } from "node:fs"
 import { stat } from "node:fs/promises"
 import { Readable } from "node:stream"
 
-import { ARTIFACT_FILES, artifactFile, type ArtifactName } from "./walkthroughs"
+import { ARTIFACT_FILES, type ArtifactName } from "./walkCalc"
+import { artifactFile } from "./walkthroughs"
 
 /** Resolves `bytes=a-b`, `bytes=a-` and `bytes=-n` against a file size.
  *  Returns null for a range that cannot be satisfied. */

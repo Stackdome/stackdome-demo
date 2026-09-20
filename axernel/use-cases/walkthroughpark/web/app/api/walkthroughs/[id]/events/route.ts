@@ -1,6 +1,4 @@
-import { eventsAfter, getWalk } from "@/lib/server/db"
-import { activeRelay, ensureRelay } from "@/lib/server/walkthroughs"
-import { isTerminal } from "@/lib/types"
+import { eventFeed } from "@/lib/server/walkthroughs"
 
 export const runtime = "nodejs"
 export const dynamic = "force-dynamic"
@@ -12,8 +10,8 @@ const HEARTBEAT_MS = 15_000
  *  A final `end` event tells the page to stop listening. */
 export async function GET(request: Request, { params }: { params: Promise<{ id: string }> }): Promise<Response> {
   const { id } = await params
-  const row = getWalk(id)
-  if (!row) return Response.json({ error: "No such walkthrough." }, { status: 404 })
+  const feed = eventFeed(id)
+  if (!feed) return Response.json({ error: "No such walkthrough." }, { status: 404 })
 
   let cursor = Number(request.headers.get("last-event-id")) || 0
   const encoder = new TextEncoder()
@@ -31,7 +29,7 @@ export async function GET(request: Request, { params }: { params: Promise<{ id: 
         }
       }
       const flush = (): void => {
-        for (const event of eventsAfter(id, cursor)) {
+        for (const event of feed.eventsAfter(cursor)) {
           send(`id: ${event.seq}\ndata: ${event.json}\n\n`)
           cursor = event.seq
         }
@@ -47,8 +45,7 @@ export async function GET(request: Request, { params }: { params: Promise<{ id: 
         }
       }
 
-      // A finished run with no pump still draining it: replay and end.
-      const relay = isTerminal(row.status) ? activeRelay(id) : ensureRelay(id)
+      const relay = feed.signal
       const heartbeat = setInterval(() => send(": keep-alive\n\n"), HEARTBEAT_MS)
       cleanup = (): void => {
         // Only this connection's listeners go; the pump keeps running.
@@ -61,6 +58,7 @@ export async function GET(request: Request, { params }: { params: Promise<{ id: 
       request.signal.addEventListener("abort", cleanup)
 
       send("retry: 3000\n\n")
+      // A finished run with no pump still draining it: replay and end.
       if (!relay) return finish()
       relay.on("event", flush)
       relay.on("done", finish)

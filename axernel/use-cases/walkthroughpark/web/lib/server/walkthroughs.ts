@@ -1,218 +1,137 @@
+// The use cases. Each one reads as a sequence of gateway actions (axernel.ts,
+// db.ts, artifactCache.ts, github.ts) joined by calculations (walkCalc.ts).
 import { randomUUID } from "node:crypto"
 import { EventEmitter } from "node:events"
-import { existsSync, mkdirSync } from "node:fs"
-import { rename, writeFile } from "node:fs/promises"
-import path from "node:path"
 
-import { AuthenticationError, NotFoundError, type Run } from "@axernel/sdk"
+import { isTerminal, type Walkthrough } from "../types"
+import { placeInRepo, type WalkRequest } from "../walkRequest"
+import { cacheArtifact, cachedArtifact } from "./artifactCache"
+import { downloadArtifact, isRunGone, readRun, startRun, streamRunEvents } from "./axernel"
+import { eventsAfter, getWalk, insertEvent, insertWalk, lastControlJson, lastSequence, listWalks, updateWalk, type EventRow, type WalkRow } from "./db"
+import { listBranches } from "./github"
+import { ARTIFACT_FILES, availableArtifactId, isRepeatedControl, MAX_FAILURES, newWalkRow, nextPumpStep, runFields, runInputData, sessionTitle, toWalkthrough, type ArtifactName, type StreamedEvent, type WalkInput } from "./walkCalc"
 
-import { isTerminal, type MaxSeconds, type RunStatus, type Walkthrough, type WalkResult } from "../types"
-import { forgetAxernel, getAxernel, withAxernel } from "./axernel"
-import { DATA_DIR, getWalk, insertEvent, insertWalk, lastControlJson, lastSequence, updateWalk, type WalkRow } from "./db"
-
-export interface WalkInput {
-  source: string
-  ref?: string
-  subdir?: string
-  instruction?: string
-  maxSeconds: MaxSeconds
-  kind: "repo" | "pr"
-}
-
-/** Artifact name on the run, and the file it is cached and downloaded as. */
-export const ARTIFACT_FILES = {
-  walkthrough: { fileName: "walkthrough.mp4", contentType: "video/mp4" },
-  clean: { fileName: "walkthrough-clean.mp4", contentType: "video/mp4" },
-  captions: { fileName: "walkthrough.srt", contentType: "application/x-subrip; charset=utf-8" },
-} as const
-export type ArtifactName = keyof typeof ARTIFACT_FILES
-
-type StoredArtifacts = Partial<Record<string, { status: string; artifactId: string | null }>>
-
-function parse<T>(json: string | null): T | null {
-  if (!json) return null
-  try {
-    return JSON.parse(json) as T
-  } catch {
-    return null
-  }
-}
-
-export function toWalkthrough(row: WalkRow): Walkthrough {
-  const artifacts = parse<StoredArtifacts>(row.artifacts) ?? {}
-  const has = (name: ArtifactName): boolean => artifacts[name]?.status === "available" && Boolean(artifacts[name]?.artifactId)
-  return {
-    id: row.id,
-    source: row.source,
-    subdir: row.subdir,
-    instruction: row.instruction,
-    maxSeconds: row.max_seconds as MaxSeconds,
-    kind: row.kind === "pr" ? "pr" : "repo",
-    status: row.status as RunStatus,
-    result: parse<WalkResult>(row.result),
-    error: parse(row.error),
-    usage: parse(row.usage),
-    artifacts: { walkthrough: has("walkthrough"), captions: has("captions"), clean: has("clean") },
-    createdAt: row.created_at,
-  }
-}
-
-function runFields(run: Run): Parameters<typeof updateWalk>[1] {
-  const artifacts: StoredArtifacts = {}
-  for (const output of run.artifactOutputs ?? []) artifacts[output.name] = { status: output.status, artifactId: output.artifactId }
-  const pending = Object.values(artifacts).some((artifact) => artifact?.status === "pending")
-  const usage = run.usage ? { totalTokens: run.usage.totalTokens, costUsd: run.usage.costUsd } : null
-  return {
-    status: run.status,
-    settled: isTerminal(run.status) && !pending ? 1 : 0,
-    result: run.response?.kind === "result" ? JSON.stringify(run.response.value) : null,
-    error: run.error ? JSON.stringify(run.error) : null,
-    usage: usage ? JSON.stringify(usage) : null,
-    artifacts: JSON.stringify(artifacts),
-  }
-}
-
-export async function createWalkthrough(input: WalkInput): Promise<string> {
+export async function startWalkthrough(request: WalkRequest): Promise<string> {
   const id = randomUUID()
-  const data = {
-    source: input.source,
-    ...(input.ref ? { ref: input.ref } : {}),
-    ...(input.subdir ? { subdir: input.subdir } : {}),
-    ...(input.instruction ? { instruction: input.instruction } : {}),
-    maxSeconds: input.maxSeconds,
-  }
-  const run = await withAxernel(async (client, config) => {
-    const session = await client.sessions.create(
-      config.projectId,
-      { agentId: config.agentId, checkpointingEnabled: false, metadata: { walkthroughId: id } },
-      { idempotencyKey: `wtp-session-${id}` },
-    )
-    return client.runs.create(session.id, { input: { data }, metadata: { walkthroughId: id } }, { idempotencyKey: `wtp-run-${id}` })
-  })
-  insertWalk({
-    id,
-    source: input.source,
-    subdir: input.subdir ?? null,
-    instruction: input.instruction ?? null,
-    max_seconds: input.maxSeconds,
-    kind: input.kind,
-    session_id: run.sessionId,
-    run_id: run.id,
-    created_at: new Date().toISOString(),
-    ...runFields(run),
-  })
-  ensureRelay(id)
+  const place = placeInRepo(request, request.treePath ? await listBranches(request.source) : [])
+  const { treePath: _unsplit, ...target } = request
+  const input: WalkInput = { ...target, ...place }
+  const run = await startRun(id, sessionTitle(input), runInputData(input))
+  insertWalk(newWalkRow(id, input, run, new Date()))
+  ensurePump(id)
   return id
+}
+
+export function listWalkthroughs(): Walkthrough[] {
+  return listWalks().map(toWalkthrough)
+}
+
+export async function readWalkthrough(id: string): Promise<Walkthrough | undefined> {
+  const row = await refreshWalk(id)
+  return row && toWalkthrough(row)
 }
 
 /** The row with the run's current state. A settled run is served from
  *  SQLite; if Axernel cannot be reached the last known row stands. */
-export async function refreshWalk(id: string): Promise<WalkRow | undefined> {
+async function refreshWalk(id: string): Promise<WalkRow | undefined> {
   const row = getWalk(id)
   if (!row || row.settled) return row
   try {
-    const run = await withAxernel((client) => client.runs.get(row.run_id))
-    updateWalk(id, runFields(run))
+    updateWalk(id, runFields(await readRun(row.run_id)))
   } catch (error) {
     console.error(`[wtp] could not refresh run ${row.run_id}:`, error)
   }
   return getWalk(id)
 }
 
-// --- Event relay -----------------------------------------------------------
-// One pump per live walkthrough copies Axernel's stream into SQLite. Browser
-// connections only ever tail SQLite, so a closed tab never stops the pump.
-
-const STREAM_TIMEOUT_MS = 60 * 60 * 1000
-const MAX_FAILURES = 8
-
-const relays = ((globalThis as unknown as { __wtpRelays?: Map<string, EventEmitter> }).__wtpRelays ??= new Map<string, EventEmitter>())
-
-export function activeRelay(id: string): EventEmitter | undefined {
-  return relays.get(id)
-}
-
-export function ensureRelay(id: string): EventEmitter {
-  const existing = relays.get(id)
-  if (existing) return existing
-  const relay = new EventEmitter()
-  relay.setMaxListeners(0)
-  relays.set(id, relay)
-  void pump(id, relay).finally(() => {
-    relays.delete(id)
-    relay.emit("done")
-  })
-  return relay
-}
-
-const sleep = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms))
-
-function store(id: string, event: { sequence?: number; type: string; data: unknown }): boolean {
-  if (event.type === "stream.end") return false
-  if (event.sequence === undefined) {
-    // Control frames carry no sequence and are sent again on every
-    // reconnect: keep one only when it differs from the last one kept.
-    const last = parse<{ type: string; data: unknown }>(lastControlJson(id) ?? null)
-    if (last && last.type === event.type && JSON.stringify(last.data) === JSON.stringify(event.data)) return false
-  }
-  return insertEvent(id, event.sequence ?? null, JSON.stringify(event))
-}
-
-async function pump(id: string, relay: EventEmitter): Promise<void> {
-  const row = getWalk(id)
-  if (!row) return
-  let failures = 0
-  while (true) {
-    try {
-      const client = await getAxernel()
-      const stream = client.runs.events(row.run_id, { lastEventId: lastSequence(id), timeoutMs: STREAM_TIMEOUT_MS })
-      for await (const event of stream) {
-        failures = 0
-        if (store(id, event)) relay.emit("event")
-      }
-    } catch (error) {
-      failures += 1
-      if (error instanceof AuthenticationError) forgetAxernel()
-      if (error instanceof NotFoundError) failures = MAX_FAILURES
-      console.error(`[wtp] event stream for run ${row.run_id} dropped:`, error instanceof Error ? error.message : error)
-    }
-    const fresh = await refreshWalk(id)
-    if (!fresh || isTerminal(fresh.status)) return
-    // ponytail: gives up after repeated failures; the next visit to the
-    // page starts a new pump, resuming from the last stored sequence.
-    if (failures >= MAX_FAILURES) return
-    await sleep(Math.min(1000 * 2 ** failures, 15_000))
-  }
-}
-
 // --- Artifacts -------------------------------------------------------------
-// The SDK only downloads an artifact whole, so each is cached on disk once
+// Axernel only hands an artifact over whole, so each is cached on disk once
 // and ranges are served from the file.
 
+// In-flight downloads, so concurrent range requests share one.
 const downloads = new Map<string, Promise<string>>()
 
 /** Path of the cached artifact file, or null when the run has no such artifact. */
 export async function artifactFile(id: string, name: ArtifactName): Promise<string | null> {
   const row = await refreshWalk(id)
-  const artifactId = parse<StoredArtifacts>(row?.artifacts ?? null)?.[name]?.artifactId
-  if (!row || !artifactId || !toWalkthrough(row).artifacts[name]) return null
+  const artifactId = row && availableArtifactId(row, name)
+  if (!artifactId) return null
 
-  const dir = path.join(DATA_DIR, "artifacts", id)
-  const file = path.join(dir, ARTIFACT_FILES[name].fileName)
-  if (existsSync(file)) return file
+  const { fileName } = ARTIFACT_FILES[name]
+  const cached = cachedArtifact(id, fileName)
+  if (cached) return cached
 
   const key = `${id}:${name}`
   let download = downloads.get(key)
   if (!download) {
-    download = (async () => {
-      mkdirSync(dir, { recursive: true })
-      const bytes = await withAxernel((client) => client.artifacts.download(artifactId, { timeoutMs: 5 * 60 * 1000 }))
-      const partial = `${file}.${randomUUID()}.part`
-      await writeFile(partial, bytes)
-      await rename(partial, file)
-      return file
-    })().finally(() => downloads.delete(key))
+    download = downloadArtifact(artifactId)
+      .then((bytes) => cacheArtifact(id, fileName, bytes))
+      .finally(() => downloads.delete(key))
     downloads.set(key, download)
   }
   return download
+}
+
+// --- Event pump ------------------------------------------------------------
+// One pump per live walkthrough copies Axernel's stream into SQLite. Browser
+// connections only ever tail SQLite, so a closed tab never stops the pump.
+//
+// A walkthrough is pumping exactly while it has an entry in `pumps`. The
+// entry is the pump's signal: "event" after a row is written, "done" once
+// the pump has stopped (see PumpStep for the reasons it stops).
+
+const pumps = ((globalThis as unknown as { __wtpRelays?: Map<string, EventEmitter> }).__wtpRelays ??= new Map<string, EventEmitter>())
+
+function ensurePump(id: string): EventEmitter {
+  const existing = pumps.get(id)
+  if (existing) return existing
+  const signal = new EventEmitter()
+  signal.setMaxListeners(0)
+  pumps.set(id, signal)
+  void pump(id, signal).finally(() => {
+    pumps.delete(id)
+    signal.emit("done")
+  })
+  return signal
+}
+
+/** What a browser connection tails: stored events, and the pump's signal. With
+ *  no signal there is nothing more to come: replay what is stored and end. */
+export function eventFeed(id: string): { signal: EventEmitter | undefined; eventsAfter: (seq: number) => EventRow[] } | undefined {
+  const row = getWalk(id)
+  if (!row) return undefined
+  // A finished run gets no new pump, but one still draining it is listened to.
+  const signal = isTerminal(row.status) ? pumps.get(id) : ensurePump(id)
+  return { signal, eventsAfter: (seq) => eventsAfter(id, seq) }
+}
+
+const sleep = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms))
+
+/** Returns whether a row was written. */
+function store(id: string, event: StreamedEvent): boolean {
+  if (event.type === "stream.end") return false
+  if (event.sequence === undefined && isRepeatedControl(lastControlJson(id), event)) return false
+  return insertEvent(id, event.sequence ?? null, JSON.stringify(event))
+}
+
+async function pump(id: string, signal: EventEmitter): Promise<void> {
+  const row = getWalk(id)
+  if (!row) return
+  let failures = 0
+  while (true) {
+    try {
+      for await (const event of streamRunEvents(row.run_id, lastSequence(id))) {
+        failures = 0
+        if (store(id, event)) signal.emit("event")
+      }
+    } catch (error) {
+      failures = isRunGone(error) ? MAX_FAILURES : failures + 1
+      console.error(`[wtp] event stream for run ${row.run_id} dropped:`, error instanceof Error ? error.message : error)
+    }
+    // ponytail: gives up after repeated failures; the next visit to the
+    // page starts a new pump, resuming from the last stored sequence.
+    const step = nextPumpStep((await refreshWalk(id))?.status, failures)
+    if (step.then === "stop") return
+    await sleep(step.afterMs)
+  }
 }

@@ -1,5 +1,6 @@
 // The walkthrough-director agent: instructions, contracts and artifacts.
 // setup.ts creates or revises the agent from this file; the web app relies on these shapes.
+import type { githubMcpRemote, SecretCredential } from "./shared.js"
 
 export const AGENT_NAME = "walkthrough-director"
 
@@ -84,3 +85,17 @@ export const artifacts = [
 ]
 
 export const limits = { timeoutSeconds: 2700, maxSteps: 300 }
+
+/** The agent's whole configuration. The same GitHub secret feeds the `gh` CLI (GH_TOKEN) and the GitHub MCP server. */
+export function directorConfiguration(modelProviderId: string, githubCredential: SecretCredential, githubRemote: ReturnType<typeof githubMcpRemote>) {
+  return {
+    harness: "opencode" as const,
+    modelProviderId,
+    instructions,
+    contracts: { input: { schema: inputSchema }, output: { schema: outputSchema } },
+    limits,
+    environmentCredentialBindings: { GH_TOKEN: githubCredential },
+    mcpServers: { github: { remote: githubRemote } },
+    artifacts,
+  }
+}
