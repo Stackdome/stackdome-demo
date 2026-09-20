@@ -71,7 +71,7 @@ export function GateForm() {
           className="input"
           rows={3}
           maxLength={2000}
-          placeholder="Add a todo, mark it done, then filter by status."
+          placeholder="Give me an overview of feature X, or show me the fix works."
           value={instruction}
           onChange={(event) => setInstruction(event.target.value)}
         />
