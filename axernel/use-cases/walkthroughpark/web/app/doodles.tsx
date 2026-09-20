@@ -78,3 +78,12 @@ export function Squiggle({ color = "var(--clay)", ...props }: DoodleProps & { co
     </svg>
   )
 }
+
+/** A pass of highlighter, to sit behind a word. Stretches to fit it. */
+export function Highlighter({ color = "var(--sun)", ...props }: DoodleProps & { color?: string }) {
+  return (
+    <svg viewBox="0 0 300 40" width="100%" height="100%" preserveAspectRatio="none" aria-hidden="true" {...props}>
+      <path d="M6 12 C 60 5, 130 9, 294 6 L 297 30 C 210 37, 120 31, 4 35 Z" fill={color} />
+    </svg>
+  )
+}

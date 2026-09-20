@@ -1,35 +1,13 @@
-import Link from "next/link"
-
 import { configPath, isConfigured } from "@/lib/server/config"
-import { listWalkthroughs } from "@/lib/server/walkthroughs"
-import type { Walkthrough } from "@/lib/types"
 
-import { Bench, Squiggle, Sun, Tree } from "./doodles"
+import { Credit } from "./Credit"
+import { Squiggle, Sun, Tree } from "./doodles"
 import { GateForm } from "./GateForm"
-import { statusTone, statusWord } from "./status"
 
 export const dynamic = "force-dynamic"
 
-const UNITS: [Intl.RelativeTimeFormatUnit, number][] = [
-  ["day", 86_400],
-  ["hour", 3_600],
-  ["minute", 60],
-]
-
-function relativeTime(iso: string): string {
-  const seconds = (Date.now() - new Date(iso).getTime()) / 1000
-  const format = new Intl.RelativeTimeFormat("en", { numeric: "auto" })
-  for (const [unit, size] of UNITS) {
-    if (seconds >= size) return format.format(-Math.floor(seconds / size), unit)
-  }
-  return "just now"
-}
-
-const shortSource = (walk: Walkthrough): string => walk.source.replace("https://github.com/", "") + (walk.subdir ? ` · ${walk.subdir}` : "")
-
 export default function GatePage() {
   const configured = isConfigured()
-  const walks = listWalkthroughs()
 
   return (
     <div className="gate">
@@ -52,30 +30,9 @@ export default function GatePage() {
         </section>
       )}
 
-      <section className="shelf" aria-labelledby="shelf-title">
-        <div className="shelf-head">
-          <h2 id="shelf-title">Past walks</h2>
-          <Bench className="doodle doodle-bench" />
-        </div>
-        {walks.length === 0 ? (
-          <p className="quiet">Nothing here yet. The first walk shows up on this shelf.</p>
-        ) : (
-          <ul className="shelf-list">
-            {walks.map((walk) => (
-              <li key={walk.id}>
-                <Link href={`/w/${walk.id}`} className="card shelf-item tilt">
-                  <span className="shelf-name">{walk.result?.title || shortSource(walk)}</span>
-                  <span className="shelf-meta">
-                    <span className={`stamp stamp-${statusTone(walk.status)}`}>{statusWord(walk.status)}</span>
-                    <span className="quiet">{relativeTime(walk.createdAt)}</span>
-                  </span>
-                </Link>
-              </li>
-            ))}
-          </ul>
-        )}
-        <Tree className="doodle doodle-tree" />
-      </section>
+      <Tree className="doodle doodle-tree" />
+      {/* The rail carries the credit on wide screens; this copy shows once it folds. */}
+      <Credit className="gate-credit" />
     </div>
   )
 }
