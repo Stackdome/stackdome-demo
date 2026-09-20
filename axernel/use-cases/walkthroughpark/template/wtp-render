@@ -9,6 +9,10 @@ out=${2:-${WTP_OUT:-/workspace/artifacts/${RUN_ID:-local}}}
 max_seconds=${WTP_MAX_SECONDS:-120}
 max_bytes=$((25 * 1024 * 1024))
 
+# The Axernel harness gives the agent its own HOME and drops the image's ENV, so
+# Playwright would look for browsers under that HOME instead of the image's copy.
+export PLAYWRIGHT_BROWSERS_PATH=${PLAYWRIGHT_BROWSERS_PATH:-/ms-playwright}
+
 cd /opt/walkthrough
 mkdir -p .argo videos
 log=.argo/$name.render.log
@@ -43,6 +47,7 @@ npx argo validate "$name" >>"$log" 2>&1 || fail "scene names in scenes.json and 
 
 echo "[3/5] record and export"
 if ! npx argo pipeline "$name" --base-url "$base_url" >>"$log" 2>&1; then
+  grep -q "Executable doesn't exist" "$log" && fail "the browser is missing at PLAYWRIGHT_BROWSERS_PATH=$PLAYWRIGHT_BROWSERS_PATH; this is a sandbox problem, not the demo script"
   scene=$(grep -o "Last scene entered: '[^']*'" "$log" | tail -n 1)
   fail "recording failed. ${scene:-no scene was entered}. Fix the selector or wait in that scene"
 fi
