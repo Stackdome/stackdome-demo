@@ -3,7 +3,8 @@
   "private": true,
   "type": "module",
   "scripts": {
-    "setup": "tsx --env-file-if-exists=.env setup.ts"
+    "setup": "tsx --env-file-if-exists=.env setup.ts",
+    "smoke": "tsx --env-file-if-exists=.env smoke.ts"
   },
   "dependencies": {
     "@axernel/sdk": "file:/Users/akshaysasidharan/code/axernel/sdk/typescript"
