@@ -63,17 +63,17 @@ export async function ensureModelProvider(axernel: Axernel) {
     return platform
   }
   const name = `WalkThroughPark ${model}`
-  return (
-    (await find(axernel.modelProviders.iterate(), (candidate) => candidate.name === name)) ??
-    (await axernel.modelProviders.create({
-      name,
-      protocol: "openai_compatible",
-      baseUrl: "https://openrouter.ai/api/v1",
-      modelName: model,
-      token,
-      pricing: await openRouterPricing(),
-    }))
-  )
+  const existing = await find(axernel.modelProviders.iterate(), (candidate) => candidate.name === name)
+  // The stored token is write-only, so a re-run always replaces it with the one in .env.
+  if (existing) return axernel.modelProviders.update(existing.id, { token })
+  return axernel.modelProviders.create({
+    name,
+    protocol: "openai_compatible",
+    baseUrl: "https://openrouter.ai/api/v1",
+    modelName: model,
+    token,
+    pricing: await openRouterPricing(),
+  })
 }
 
 // Templates are immutable, so a new image digest gets a new template.
