@@ -1,4 +1,8 @@
-/** The quiet line under the wordmark, and once more at the foot of the gate. */
+import Link from "next/link"
+
+import { Highlighter } from "./doodles"
+
+/** The quiet line under the wordmark. */
 export function Credit({ className = "" }: { className?: string }) {
   return (
     <p className={`credit ${className}`.trim()}>
@@ -7,5 +11,18 @@ export function Credit({ className = "" }: { className?: string }) {
         Axernel
       </a>
     </p>
+  )
+}
+
+/** The masthead: the wordmark with its credit, centred over the page. */
+export function Brand() {
+  return (
+    <header className="brand">
+      <Link href="/" className="wordmark">
+        <Highlighter className="wordmark-swash" />
+        <span>WalkThroughPark</span>
+      </Link>
+      <Credit />
+    </header>
   )
 }

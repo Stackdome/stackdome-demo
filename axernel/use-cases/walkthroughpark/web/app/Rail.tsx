@@ -7,8 +7,7 @@ import { useEffect, useState } from "react"
 import { relativeTime } from "@/lib/relativeTime"
 import type { Walkthrough } from "@/lib/types"
 
-import { Credit } from "./Credit"
-import { Bench, Highlighter } from "./doodles"
+import { Bench } from "./doodles"
 import { statusTone, statusWord } from "./status"
 
 const shortSource = (walk: Walkthrough): string => walk.source.replace("https://github.com/", "") + (walk.subdir ? ` · ${walk.subdir}` : "")
@@ -53,13 +52,6 @@ export function Rail({ initial }: { initial: Walkthrough[] }) {
       }}
     >
       <div className="rail-head">
-        <div className="brand">
-          <Link href="/" className="wordmark">
-            <Highlighter className="wordmark-swash" />
-            <span>WalkThroughPark</span>
-          </Link>
-          <Credit />
-        </div>
         <button type="button" className="rail-toggle" aria-expanded={open} aria-controls="rail-body" onClick={() => setOpen(!open)}>
           Past walks
         </button>

@@ -5,6 +5,7 @@ import type { ReactNode } from "react"
 import { listWalkthroughs } from "@/lib/server/walkthroughs"
 
 import "./globals.css"
+import { Brand } from "./Credit"
 import { Rail } from "./Rail"
 
 const display = Gaegu({ subsets: ["latin"], weight: ["400", "700"], variable: "--font-display", display: "swap" })
@@ -25,6 +26,7 @@ export default function RootLayout({ children }: { children: ReactNode }) {
     <html lang="en" className={`${display.variable} ${body.variable}`}>
       <body>
         <div className="shell">
+          <Brand />
           <Rail initial={listWalkthroughs()} />
           <main className="page">{children}</main>
         </div>

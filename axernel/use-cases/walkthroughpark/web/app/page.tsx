@@ -1,6 +1,5 @@
 import { configPath, isConfigured } from "@/lib/server/config"
 
-import { Credit } from "./Credit"
 import { Squiggle, Sun, Tree } from "./doodles"
 import { GateForm } from "./GateForm"
 
@@ -31,8 +30,6 @@ export default function GatePage() {
       )}
 
       <Tree className="doodle doodle-tree" />
-      {/* The rail carries the credit on wide screens; this copy shows once it folds. */}
-      <Credit className="gate-credit" />
     </div>
   )
 }
