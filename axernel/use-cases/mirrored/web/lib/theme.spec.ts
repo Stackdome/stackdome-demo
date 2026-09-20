@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest"
 
-import { nextTheme, themeLabel, themeOf } from "./theme"
+import { nextTheme, shownTheme, themeLabel, themeOf } from "./theme"
 
 describe("themeOf", () => {
   it("knows light and dark", () => {
@@ -13,17 +13,33 @@ describe("themeOf", () => {
   })
 })
 
+describe("shownTheme", () => {
+  it("lets the system decide until someone chooses", () => {
+    expect(shownTheme("system", true)).toBe("dark")
+    expect(shownTheme("system", false)).toBe("light")
+  })
+
+  it("holds a choice whatever the system prefers", () => {
+    expect(shownTheme("light", true)).toBe("light")
+    expect(shownTheme("dark", false)).toBe("dark")
+  })
+})
+
 describe("nextTheme", () => {
-  it("cycles system, light, dark and round again", () => {
-    expect(nextTheme("system")).toBe("light")
-    expect(nextTheme("light")).toBe("dark")
-    expect(nextTheme("dark")).toBe("system")
+  it("goes to the side that is not on screen", () => {
+    expect(nextTheme("light", true)).toBe("dark")
+    expect(nextTheme("dark", false)).toBe("light")
+  })
+
+  it("leaves the system's dark for light on the first press", () => {
+    expect(nextTheme("system", true)).toBe("light")
+    expect(nextTheme("system", false)).toBe("dark")
   })
 })
 
 describe("themeLabel", () => {
-  it("says what the toggle is set to", () => {
-    expect(themeLabel("system")).toBe("Theme: follows your system")
-    expect(themeLabel("dark")).toBe("Theme: dark")
+  it("says what pressing will do", () => {
+    expect(themeLabel("dark")).toBe("Switch to light mode")
+    expect(themeLabel("light")).toBe("Switch to dark mode")
   })
 })

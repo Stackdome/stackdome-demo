@@ -68,8 +68,8 @@ const STEP_SHAPES: Record<TrailStage, ReactNode> = {
   rebuild: <path d="M 2 35 A 22 22 0 0 1 46 35 Z" />,
   reflect: (
     <>
-      <path d="M 22 2 A 22 22 0 0 0 22 46 Z" />
-      <path d="M 26 2 A 22 22 0 0 1 26 46 Z" />
+      <path d="M 22 4 A 20 20 0 0 0 22 44 Z" />
+      <path d="M 26 4 A 20 20 0 0 1 26 44 Z" />
     </>
   ),
 }
