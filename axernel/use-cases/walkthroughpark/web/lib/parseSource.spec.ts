@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest"
 
-import { parseSource } from "./parseSource"
+import { parseSource, splitTreePath } from "./parseSource"
 
 describe("parseSource", () => {
   describe("given a repo link", () => {
@@ -43,6 +43,7 @@ describe("parseSource", () => {
       expect(parseSource("https://github.com/acme/mono/tree/main/apps/web")).toEqual({
         source: "https://github.com/acme/mono",
         subdir: "apps/web",
+        treePath: "main/apps/web",
         kind: "repo",
       })
     })
@@ -50,6 +51,7 @@ describe("parseSource", () => {
     it("leaves subdir out when the link stops at the branch", () => {
       expect(parseSource("https://github.com/acme/mono/tree/main")).toEqual({
         source: "https://github.com/acme/mono",
+        treePath: "main",
         kind: "repo",
       })
     })
@@ -71,6 +73,29 @@ describe("parseSource", () => {
       const parsed = parseSource(link)
       expect(parsed).toHaveProperty("error")
       expect(parsed).not.toHaveProperty("source")
+    })
+  })
+})
+
+describe("splitTreePath", () => {
+  describe("given a branch whose name contains a slash", () => {
+    it("takes the longest matching branch and leaves the rest as the folder", () => {
+      expect(splitTreePath("axernel/walkthroughpark/axernel/scratch/todo-app", ["main", "axernel", "axernel/walkthroughpark"])).toEqual({
+        ref: "axernel/walkthroughpark",
+        subdir: "axernel/scratch/todo-app",
+      })
+    })
+  })
+
+  describe("given a link that stops at the branch", () => {
+    it("returns the branch with no folder", () => {
+      expect(splitTreePath("feature/x", ["main", "feature/x"])).toEqual({ ref: "feature/x" })
+    })
+  })
+
+  describe("given no branch matches, as with a tag or a commit", () => {
+    it("falls back to the first segment as the ref", () => {
+      expect(splitTreePath("v1.2.0/apps/web", ["main"])).toEqual({ ref: "v1.2.0", subdir: "apps/web" })
     })
   })
 })

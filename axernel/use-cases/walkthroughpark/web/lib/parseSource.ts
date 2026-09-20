@@ -1,5 +1,5 @@
 export type ParsedSource =
-  | { source: string; subdir?: string; kind: "repo" | "pr" }
+  | { source: string; subdir?: string; treePath?: string; kind: "repo" | "pr" }
   | { error: string }
 
 const NAME = /^[A-Za-z0-9._-]+$/
@@ -34,12 +34,25 @@ export function parseSource(input: string): ParsedSource {
   }
 
   if (section === "tree" || section === "blob") {
-    // ponytail: the first segment is taken as the branch, so a branch name
-    // containing "/" puts its tail into subdir. Resolving it needs the API.
-    const subdir = rest.slice(1).map(decodeURIComponent).join("/")
-    if (subdir.split("/").includes("..")) return { error: "That path is not inside the repo." }
-    return subdir ? { source: repoUrl, subdir, kind: "repo" } : { source: repoUrl, kind: "repo" }
+    // A branch name may contain "/", so where it ends is only known once the repo's
+    // branches are listed. subdir assumes a one-segment branch; treePath keeps it all
+    // for splitTreePath to settle.
+    const segments = rest.map(decodeURIComponent)
+    if (segments.includes("..")) return { error: "That path is not inside the repo." }
+    const subdir = segments.slice(1).join("/")
+    const treePath = segments.join("/")
+    return { source: repoUrl, ...(subdir ? { subdir } : {}), ...(treePath ? { treePath } : {}), kind: "repo" }
   }
 
   return { source: repoUrl, kind: "repo" }
+}
+
+/** Splits a tree link's path into branch and folder, preferring the longest branch name that matches. */
+export function splitTreePath(treePath: string, branches: string[]): { ref: string; subdir?: string } {
+  const match = branches
+    .filter((branch) => treePath === branch || treePath.startsWith(`${branch}/`))
+    .sort((a, b) => b.length - a.length)[0]
+  const ref = match ?? treePath.split("/")[0] ?? treePath
+  const subdir = treePath.slice(ref.length + 1)
+  return subdir ? { ref, subdir } : { ref }
 }

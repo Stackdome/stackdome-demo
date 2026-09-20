@@ -20,6 +20,7 @@ Start by reading /opt/walkthrough/WALKTHROUGH.md. It documents the rendering too
 
 3. Get the app running.
    - Clone with git (GH_TOKEN is set for gh and https). For a pull request, check out the PR head: gh pr checkout <number>, or fetch refs/pull/<number>/head.
+   - When input.ref is set, check out that branch, tag or commit before anything else.
    - When input.subdir is set, the app lives in that directory of the repository.
    - Install dependencies and start the dev server in the background, logging to a file. Poll its port with curl until it responds. Read the repo's own instructions for the right commands.
    - If the app needs services that are not available here (a database server, Docker, paid API keys), do not spend the budget fighting it. See step 6.
@@ -36,6 +37,7 @@ export const inputSchema = {
   required: ["source", "maxSeconds"],
   properties: {
     source: { type: "string" },
+    ref: { type: "string" },
     subdir: { type: "string" },
     instruction: { type: "string" },
     maxSeconds: { type: "integer", enum: [30, 60, 90] },

@@ -55,7 +55,8 @@ It generates the voiceover, records, exports, burns captions, verifies, and copi
 - Wait on durable UI state (`getByText(...).waitFor()`), never on a toast or a fixed sleep.
 - Prefer `getByRole`, `getByLabel`, `getByText`. Read the app's source for the real accessible names instead of guessing. If a click is intercepted by an overlay, use `locator.evaluate(el => el.click())`.
 - Do setup (seeding, login, clearing localStorage) before `startRecording`.
-- Start the app in the background with its output in a log file, for example `nohup npm run dev > /tmp/app.log 2>&1 &`, and poll the port with `curl` until it answers. Bind to `0.0.0.0` or `localhost`; either works.
+- Start the app fully detached, or the shell tool waits on it for minutes: `setsid nohup npm run dev > /tmp/app.log 2>&1 < /dev/null & disown`. Then, in a separate command, poll the port with `curl` until it answers. Bind to `0.0.0.0` or `localhost`; either works.
+- Fill the frame. The video is 1280x720. When the app's content is narrower than about half the viewport, enlarge it during setup, before `startRecording`: `await page.addStyleTag({ content: 'html { zoom: 1.6 }' })`. Pick the factor so the main content spans most of the width without horizontal scrolling, and keep the bottom 110px free for captions.
 - Never run two `wtp-render` at once.
 - Before recording, you can check selectors quickly with a plain Playwright script in `/opt/walkthrough` (`npx playwright test` is not needed; `node -e` with `playwright` works) or by reading the component source.
 

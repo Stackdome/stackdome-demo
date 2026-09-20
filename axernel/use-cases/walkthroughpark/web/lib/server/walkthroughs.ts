@@ -12,6 +12,7 @@ import { DATA_DIR, getWalk, insertEvent, insertWalk, lastControlJson, lastSequen
 
 export interface WalkInput {
   source: string
+  ref?: string
   subdir?: string
   instruction?: string
   maxSeconds: MaxSeconds
@@ -75,6 +76,7 @@ export async function createWalkthrough(input: WalkInput): Promise<string> {
   const id = randomUUID()
   const data = {
     source: input.source,
+    ...(input.ref ? { ref: input.ref } : {}),
     ...(input.subdir ? { subdir: input.subdir } : {}),
     ...(input.instruction ? { instruction: input.instruction } : {}),
     maxSeconds: input.maxSeconds,
