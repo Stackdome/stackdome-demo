@@ -1,0 +1,30 @@
+#!/usr/bin/env bash
+# mir-brand <url> <workDir>
+# Runs Dembrandt (MIT, https://github.com/dembrandt/dembrandt) over the whole page and saves, under
+# <workDir>/brand/: site.json (everything it measured), site.tokens.json (W3C design tokens),
+# theme.css (Tailwind v4 @theme), shadcn.css (shadcn/ui theme), report.html (self-contained report).
+# Prints a short summary. Last line is MIR_OK or MIR_ERROR: <reason>.
+set -uo pipefail
+export PLAYWRIGHT_BROWSERS_PATH="${PLAYWRIGHT_BROWSERS_PATH:-/ms-playwright}"
+
+url="${1:-}"; work="${2:-}"
+[ -n "$url" ] && [ -n "$work" ] || { echo "MIR_ERROR: usage: mir-brand <url> <workDir>"; exit 1; }
+brand="$work/brand"; scratch="$(mktemp -d)"
+mkdir -p "$brand"
+
+if ! (cd "$scratch" && timeout 240 dembrandt "$url" --no-sandbox --dtcg --save-output \
+      --tailwind "$brand/theme.css" --shadcn "$brand/shadcn.css" --html "$brand/report.html" >"$brand/dembrandt.log" 2>&1); then
+  echo "MIR_ERROR: dembrandt failed: $(tail -n 3 "$brand/dembrandt.log" | tr '\n' ' ' | cut -c1-400)"
+  exit 1
+fi
+tokens="$(find "$scratch/output" -name '*.tokens.json' | head -n 1)"
+site="$(find "$scratch/output" -name '*.json' ! -name '*.tokens.json' | head -n 1)"
+[ -f "$tokens" ] && [ -f "$site" ] || { echo "MIR_ERROR: dembrandt wrote no output files"; exit 1; }
+cp "$tokens" "$brand/site.tokens.json"; cp "$site" "$brand/site.json"
+
+echo "semantic colours: $(jq -r '.color.semantic // {} | to_entries | map("\(.key)=\(.value["$value"].hex // .value["$value"])") | join("  ")' "$brand/site.tokens.json")"
+echo "font families: $(jq -r '.typography["font-family"] // {} | to_entries | map(.key) | join(", ")' "$brand/site.tokens.json")"
+echo "text styles: $(jq -r '.typography.style // {} | keys | join(", ")' "$brand/site.tokens.json" | cut -c1-300)"
+echo "components seen: $(jq -r '.components // {} | to_entries | map("\(.key)=\(.value|length)") | join("  ")' "$brand/site.json")"
+echo "breakpoints: $(jq -r '[.breakpoints[]? | (.px // .value // .)] | join(" ")' "$brand/site.json" | cut -c1-120)"
+echo "MIR_OK"

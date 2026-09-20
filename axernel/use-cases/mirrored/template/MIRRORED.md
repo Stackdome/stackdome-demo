@@ -1,16 +1,26 @@
 # Mirrored toolkit
 
-Three commands are on PATH. Each prints `MIR_OK ...` or `MIR_ERROR: <reason>` as its last line.
+Four commands are on PATH. Each prints `MIR_OK ...` or `MIR_ERROR: <reason>` as its last line.
 Work in `/tmp/mirror`. Use this layout exactly; the tools depend on it.
 
 ```
 /tmp/mirror/
+  brand/                   written by mir-brand
   measure/                 written by mir-measure (and rebuild.png, diff.png by mir-reflect)
   tokens.json              you write
   registry/<name>.tsx      you write: the React component, kebab-case file name (pricing-table.tsx)
   registry/preview.tsx     you write: renders the component with the original's content
   README.md                you write: five lines on how to use it
 ```
+
+## 0. mir-brand <url> /tmp/mirror
+
+Measures the whole page's design system with Dembrandt and prints its semantic colours, font families,
+text styles, components seen and breakpoints. Files land in `brand/`: `site.json`, `site.tokens.json`,
+`theme.css`, `shadcn.css`, `report.html`. Run it first, in both modes. In section mode it tells you the
+site-wide role of each value, so your token names (`primary`, `background`, `text`) agree with the rest
+of the site; read more with `jq` from `brand/site.json` (for example `.components.links`, `.motion`,
+`.breakpoints`). If it fails, carry on without it and say so in caveats.
 
 ## 1. mir-measure <url> /tmp/mirror/measure [--selector <css>]
 
@@ -82,4 +92,5 @@ A `SIZE` mismatch is the first thing to fix: wrong height or width costs more th
 
 Writes `tokens.css`, `theme.css` (Tailwind `@theme`), `theme.js` (`applyTheme()` for swapping looks at
 runtime), builds `registry.zip` (shadcn registry items, one per component file) and `bundle.zip`, and
-copies `tokens.json` and the screenshots into the artifact directory.
+copies `tokens.json`, `report.html` and the screenshots into the artifact directory.
+In brand mode (no `tokens.json` written by you) it packs what `mir-brand` measured instead.

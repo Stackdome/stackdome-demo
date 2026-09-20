@@ -7,11 +7,16 @@ COPY harness/package.json /opt/mirrored/harness/package.json
 RUN cd /opt/mirrored/harness && npm install --no-audit --no-fund
 COPY harness/ssr.mjs /opt/mirrored/harness/ssr.mjs
 
+# Dembrandt (MIT) measures a whole site's design system; it uses the browser already in this image.
+RUN npm install --global dembrandt@0.35.0 --no-audit --no-fund
+
+COPY mir-brand /usr/local/bin/mir-brand
 COPY mir-measure.mjs /usr/local/bin/mir-measure
 COPY mir-reflect.mjs /usr/local/bin/mir-reflect
 COPY mir-pack.py /usr/local/bin/mir-pack
 COPY mir-diff.py /usr/local/bin/mir-diff.py
 COPY MIRRORED.md /opt/mirrored/MIRRORED.md
-RUN chmod +x /usr/local/bin/mir-measure /usr/local/bin/mir-reflect /usr/local/bin/mir-pack /usr/local/bin/mir-diff.py \
+RUN chmod +x /usr/local/bin/mir-brand /usr/local/bin/mir-measure /usr/local/bin/mir-reflect /usr/local/bin/mir-pack /usr/local/bin/mir-diff.py \
     && test "$(opencode --version)" = "1.18.29" \
-    && python3 -c "import PIL"
+    && python3 -c "import PIL" \
+    && dembrandt --version

@@ -126,8 +126,31 @@ def registry_items(work, theme):
     return items
 
 
+def pack_brand(work, out):
+    """Brand mode: no component was written, so the bundle is what mir-brand measured."""
+    brand = work / "brand"
+    if not (brand / "site.tokens.json").exists():
+        fail(f"neither {work}/tokens.json nor {brand}/site.tokens.json exists; run mir-brand first")
+    out.mkdir(parents=True, exist_ok=True)
+    with zipfile.ZipFile(out / "bundle.zip", "w", zipfile.ZIP_DEFLATED) as archive:
+        for source, name in (("site.tokens.json", "tokens.json"), ("theme.css", "theme.css"), ("shadcn.css", "shadcn.css"), ("report.html", "report.html"), ("site.json", "site.json")):
+            if (brand / source).exists():
+                archive.write(brand / source, name)
+        if (work / "README.md").exists():
+            archive.write(work / "README.md", "README.md")
+    shutil.copy(brand / "site.tokens.json", out / "tokens.json")
+    if (brand / "report.html").exists():
+        shutil.copy(brand / "report.html", out / "report.html")
+    if (work / "measure" / "page.png").exists():
+        shutil.copy(work / "measure" / "page.png", out / "page.png")
+    print(f"brand bundle: {(out / 'bundle.zip').stat().st_size // 1024} KB")
+    print("MIR_OK")
+
+
 def main(work_dir, target):
     work = Path(work_dir)
+    if target != "--theme-only" and not (work / "tokens.json").exists():
+        return pack_brand(work, Path(target))
     theme = read_theme(work)
     write_theme(work, theme)
     if target == "--theme-only":
@@ -152,6 +175,8 @@ def main(work_dir, target):
                 if file.is_file() and file.name != "tsconfig.json":
                     archive.write(file, f"{prefix}/{file.name}")
     shutil.copy(work / "tokens.json", out / "tokens.json")
+    if (work / "brand" / "report.html").exists():
+        shutil.copy(work / "brand" / "report.html", out / "report.html")
     for name in COLLECTED:
         if (work / "measure" / name).exists():
             shutil.copy(work / "measure" / name, out / name)
