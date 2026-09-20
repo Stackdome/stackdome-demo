@@ -99,7 +99,7 @@ export function toMirror(row: MirrorRow): Mirror {
     url: row.url,
     mode: row.mode === "brand" ? "brand" : ("section" satisfies Mode),
     target: row.target,
-    framework: (row.framework === "react" || row.framework === "vue" ? row.framework : "html") satisfies Framework,
+    framework: "react" satisfies Framework,
     status: row.status as RunStatus,
     result: parse<MirrorResult>(row.result),
     error: parse(row.error),

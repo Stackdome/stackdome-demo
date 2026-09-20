@@ -4,8 +4,8 @@
 export const MODES = ["section", "brand"] as const
 export type Mode = (typeof MODES)[number]
 
-export const FRAMEWORKS = ["html", "react", "vue"] as const
-export type Framework = (typeof FRAMEWORKS)[number]
+/** React only. The field stays because the agent's input contract has it. */
+export type Framework = "react"
 
 export const TERMINAL_STATUSES = ["completed", "failed", "timed_out"] as const
 export type RunStatus = "queued" | "preparing" | "running" | "finalizing" | (typeof TERMINAL_STATUSES)[number]

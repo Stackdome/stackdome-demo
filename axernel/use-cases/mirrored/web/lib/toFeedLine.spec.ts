@@ -60,8 +60,8 @@ describe("toFeedLine", () => {
       expect(toFeedLine(tool("bash", "error", { command: "mir-reflect component" }))?.text).toBe("Ran mir-reflect component (failed)")
     })
 
-    it("names an MCP tool in plain words with its first text argument", () => {
-      expect(toFeedLine(tool("github_get_file_contents", "completed", { owner: "acme", repo: "todo" }))?.text).toBe("github get file contents acme")
+    it("names a tool it has no verb for in plain words, with its first text argument", () => {
+      expect(toFeedLine(tool("page_get_outline", "completed", { site: "acme", depth: "2" }))?.text).toBe("page get outline acme")
     })
 
     it("keeps a long command to one short line", () => {

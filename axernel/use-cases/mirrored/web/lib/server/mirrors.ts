@@ -4,8 +4,8 @@ import { randomUUID } from "node:crypto"
 import { EventEmitter } from "node:events"
 
 import type { MirrorRequest } from "../mirrorRequest"
-import { isTerminal, type ArtifactName, type Mirror } from "../types"
 import { registryFileName } from "../registry"
+import { isTerminal, type ArtifactName, type Mirror } from "../types"
 import { cacheArtifact, cachedArtifact, cachedRegistryFile, isRegistryUnpacked, unpackRegistry } from "./artifactCache"
 import { downloadArtifact, isRunGone, readRun, startRun, streamRunEvents } from "./axernel"
 import { eventsAfter, getMirror, insertEvent, insertMirror, lastControlJson, lastSequence, listMirrorRows, updateMirror, type EventRow, type MirrorRow } from "./db"
@@ -90,7 +90,7 @@ export async function registryFile(id: string, file: string): Promise<string | n
 // entry is the pump's signal: "event" after a row is written, "done" once
 // the pump has stopped (see PumpStep for the reasons it stops).
 
-const pumps = ((globalThis as unknown as { __mirRelays?: Map<string, EventEmitter> }).__mirRelays ??= new Map<string, EventEmitter>())
+const pumps = ((globalThis as unknown as { __mirPumps?: Map<string, EventEmitter> }).__mirPumps ??= new Map<string, EventEmitter>())
 
 function ensurePump(id: string): EventEmitter {
   const existing = pumps.get(id)
@@ -117,8 +117,8 @@ export function eventFeed(id: string): { signal: EventEmitter | undefined; event
 
 const sleep = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms))
 
-/** Returns whether a row was written. */
-function store(id: string, event: StreamedEvent): boolean {
+/** Keeps one streamed event. Returns whether a row was written. */
+function storeEvent(id: string, event: StreamedEvent): boolean {
   if (event.type === "stream.end") return false
   if (event.sequence === undefined && isRepeatedControl(lastControlJson(id), event)) return false
   return insertEvent(id, event.sequence ?? null, JSON.stringify(event))
@@ -132,7 +132,7 @@ async function pump(id: string, signal: EventEmitter): Promise<void> {
     try {
       for await (const event of streamRunEvents(row.run_id, lastSequence(id))) {
         failures = 0
-        if (store(id, event)) signal.emit("event")
+        if (storeEvent(id, event)) signal.emit("event")
       }
     } catch (error) {
       failures = isRunGone(error) ? MAX_FAILURES : failures + 1

@@ -7,7 +7,7 @@ const run = (fields: Record<string, unknown>): Run => ({ id: "run-1", sessionId:
 const output = (name: string, status: string, artifactId: string | null = null) => ({ name, status, artifactId })
 
 const section = { url: "https://stripe.com/pricing", mode: "section", target: "pricing table", framework: "react" } as const
-const brand = { url: "https://www.stripe.com/", mode: "brand", framework: "html" } as const
+const brand = { url: "https://www.stripe.com/", mode: "brand", framework: "react" } as const
 
 describe("runInputData", () => {
   describe("given a section mirror", () => {
@@ -18,7 +18,7 @@ describe("runInputData", () => {
 
   describe("given a brand mirror", () => {
     it("sends no target, even if one slipped through", () => {
-      expect(runInputData({ ...brand, target: "hero" })).toEqual({ url: "https://www.stripe.com/", mode: "brand", framework: "html" })
+      expect(runInputData({ ...brand, target: "hero" })).toEqual({ url: "https://www.stripe.com/", mode: "brand", framework: "react" })
     })
   })
 })
@@ -119,7 +119,7 @@ describe("newMirrorRow and toMirror", () => {
       expect(toMirror({ ...row, result: "{", artifacts: "nope", mode: "?", framework: "svelte" })).toMatchObject({
         result: null,
         mode: "section",
-        framework: "html",
+        framework: "react",
         artifacts: { original: false },
       })
     })

@@ -1,19 +1,26 @@
 // Every Axernel SDK call the web app makes lives in this file.
 //
-//   auth.login          email + password from .mirrored.json -> bearer token. Done once; the
-//                       client is cached, and renewed once when a call says the token expired.
-//   sessions.create     one session per mirror. A session pins the agent's current
-//                       revision, so a later `npm run setup` never changes a run in flight.
-//                       The API has no session name: the title goes in metadata.axernel.title,
-//                       which the Axernel UI reads.
-//   runs.create         starts the agent with `input.data`. Both creates carry an idempotency
-//                       key derived from the mirror id, so the auth retry cannot start two runs.
-//   runs.get            the run's status, response, error, usage and artifact outputs.
-//   runs.events         SSE of the run. The SDK applies the request timeout to the WHOLE
-//                       stream, so we pass a long one and the pump reconnects with lastEventId.
-//   artifacts.download  returns the whole file in memory (no ranges), so callers cache it on disk.
+//   SDK call            here as            why
+//   auth.login          login              email + password from .mirrored.json -> bearer token. Done
+//                                          once; the client is cached, and renewed once when a call
+//                                          says the token expired.
+//   sessions.create     startRun           one session per mirror. A session pins the agent's current
+//                                          revision, so a later `npm run setup` never changes a run in
+//                                          flight. The API has no session name: the title goes in
+//                                          metadata.axernel.title, which the Axernel UI reads.
+//                                          Idempotency key mir-session-<mirror id>.
+//   runs.create         startRun           starts the agent with `input.data`. Idempotency key
+//                                          mir-run-<mirror id>, so the auth retry cannot start a
+//                                          second paid run.
+//   runs.get            readRun            the run's status, response, error, usage and artifact outputs.
+//   runs.events         streamRunEvents    SSE of the run. The SDK applies the request timeout to the
+//                                          WHOLE stream, so we pass an hour and the pump (mirrors.ts)
+//                                          reconnects with lastEventId.
+//   artifacts.download  downloadArtifact   returns the whole file in memory (no ranges), so the caller
+//                                          caches it on disk.
 //
-// Nothing outside this file imports @axernel/sdk, except for types and error classes.
+// Every function here is an action. Nothing outside this file calls the SDK; the only other
+// imports of it are the `Run` type (mirrorCalc.ts) and `APIError` (the POST route's error wording).
 import { AuthenticationError, Axernel, NotFoundError, type Event, type Run } from "@axernel/sdk"
 
 import { readConfig, type MirroredConfig } from "./config"
