@@ -1,0 +1,5 @@
+[
+  { "scene": "welcome", "text": "Welcome to the sample app. Let me show you around." },
+  { "scene": "action", "text": "It only takes one click to get started." },
+  { "scene": "done", "text": "And that's it. You are all set." }
+]

@@ -1,0 +1,10 @@
+{
+  "name": "walkthrough",
+  "private": true,
+  "type": "module",
+  "devDependencies": {
+    "@argo-video/cli": "0.38.0",
+    "@playwright/test": "1.61.1",
+    "kokoro-js": "1.2.1"
+  }
+}

@@ -1,0 +1,16 @@
+{
+  "name": "walkthroughpark-bootstrap",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "setup": "tsx setup.ts"
+  },
+  "dependencies": {
+    "@axernel/sdk": "file:/Users/akshaysasidharan/code/axernel/sdk/typescript"
+  },
+  "devDependencies": {
+    "tsx": "^4.20.0",
+    "typescript": "~5.8.3",
+    "@types/node": "^24.3.1"
+  }
+}

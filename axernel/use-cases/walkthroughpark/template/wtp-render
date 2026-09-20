@@ -1,0 +1,77 @@
+#!/usr/bin/env bash
+# Render demos/<name>.{scenes.json,demo.ts} into a narrated, captioned mp4.
+# Usage: wtp-render <name> [outDir]
+# On failure the last line of stderr is `WTP_ERROR: <reason>`.
+set -uo pipefail
+
+name=${1:?usage: wtp-render <name> [outDir]}
+out=${2:-${WTP_OUT:-/workspace/artifacts/${RUN_ID:-local}}}
+max_seconds=${WTP_MAX_SECONDS:-120}
+max_bytes=$((25 * 1024 * 1024))
+
+cd /opt/walkthrough
+mkdir -p .argo videos
+log=.argo/$name.render.log
+: > "$log"
+
+fail() {
+  echo "----- last log lines -----" >&2
+  tail -n 30 "$log" >&2
+  echo "WTP_ERROR: $*" >&2
+  exit 1
+}
+
+if [ "$name" = sample ]; then
+  python3 -m http.server 4173 -d sample-site >/dev/null 2>&1 &
+  server=$!
+  trap 'kill $server 2>/dev/null' EXIT
+  export WTP_BASE_URL=http://127.0.0.1:4173
+  sleep 1
+fi
+base_url=${WTP_BASE_URL:-http://localhost:5173}
+
+[ -f "demos/$name.scenes.json" ] || fail "demos/$name.scenes.json is missing"
+[ -f "demos/$name.demo.ts" ] || fail "demos/$name.demo.ts is missing"
+curl -fsS -o /dev/null --max-time 10 "$base_url" || fail "app is not reachable at $base_url; start it and set WTP_BASE_URL"
+pgrep -f "argo pipeline" >/dev/null && fail "another argo pipeline is still running; kill it first"
+
+echo "[1/5] voiceover"
+node pregen-tts.mjs "$name" >>"$log" 2>&1 || fail "voiceover generation failed"
+
+echo "[2/5] validate"
+npx argo validate "$name" >>"$log" 2>&1 || fail "scene names in scenes.json and narration.mark() calls do not match"
+
+echo "[3/5] record and export"
+if ! npx argo pipeline "$name" --base-url "$base_url" >>"$log" 2>&1; then
+  scene=$(grep -o "Last scene entered: '[^']*'" "$log" | tail -n 1)
+  fail "recording failed. ${scene:-no scene was entered}. Fix the selector or wait in that scene"
+fi
+[ -f "videos/$name.mp4" ] || fail "argo finished without writing videos/$name.mp4"
+[ -f "videos/$name.srt" ] || fail "argo finished without writing videos/$name.srt"
+
+echo "[4/5] burn captions"
+python3 burn-subs.py "$name" >>"$log" 2>&1 || fail "caption burn-in failed"
+
+echo "[5/5] verify"
+final=videos/$name-subbed.mp4
+ffprobe -v error -select_streams a -show_entries stream=codec_type -of csv=p=0 "$final" | grep -q audio || fail "export has no audio stream"
+volume=$(ffmpeg -i "$final" -af volumedetect -f null - 2>&1 | sed -n 's/.*mean_volume: \(-\{0,1\}[0-9.]*\) dB.*/\1/p')
+awk -v v="${volume:--91}" 'BEGIN { exit !(v > -50) }' || fail "export audio is silent (mean ${volume:-unknown} dB)"
+duration=$(ffprobe -v error -show_entries format=duration -of csv=p=0 "$final")
+awk -v d="$duration" -v m="$max_seconds" 'BEGIN { exit !(d <= m) }' || fail "video is ${duration}s, over the ${max_seconds}s limit; cut scenes or shorten narration"
+
+shrink() {
+  [ "$(stat -c %s "$1")" -le "$max_bytes" ] && return 0
+  ffmpeg -v error -y -i "$1" -c:v libx264 -preset medium -crf 30 -c:a copy -movflags +faststart "$1.small.mp4" >>"$log" 2>&1 && mv "$1.small.mp4" "$1"
+  [ "$(stat -c %s "$1")" -le "$max_bytes" ]
+}
+shrink "$final" || fail "captioned video is over 25 MB even after re-encoding; shorten the demo"
+
+mkdir -p "$out"
+cp "$final" "$out/walkthrough.mp4"
+cp "videos/$name.srt" "$out/walkthrough.srt"
+shrink "videos/$name.mp4" && cp "videos/$name.mp4" "$out/walkthrough-clean.mp4"
+
+echo "WTP_OK duration=${duration}s out=$out"
+# scene start times for the result: ffmetadata chapters, START is in TIMEBASE units
+grep -E '^(TIMEBASE|START|title)=' ".argo/$name/chapters.txt" 2>/dev/null | head -60
