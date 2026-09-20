@@ -1,0 +1,17 @@
+{
+  "name": "mirrored-bootstrap",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "setup": "tsx --env-file-if-exists=.env setup.ts",
+    "mirror": "tsx --env-file-if-exists=.env mirror.ts"
+  },
+  "dependencies": {
+    "@axernel/sdk": "file:/Users/akshaysasidharan/code/axernel/sdk/typescript"
+  },
+  "devDependencies": {
+    "tsx": "^4.20.0",
+    "typescript": "~5.8.3",
+    "@types/node": "^24.3.1"
+  }
+}
