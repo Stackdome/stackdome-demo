@@ -13,7 +13,7 @@
 //   templates.iterate / create      templates are immutable: a new image digest means a new template.
 //   agents.iterate / create / update    update needs expectedRevision (If-Match) and makes a new
 //                                   revision. Sessions pin the revision they were created with.
-import { Axernel } from "@axernel/sdk"
+import { AuthenticationError, Axernel } from "@axernel/sdk"
 
 // --- Settings ----------------------------------------------------------------
 export const baseUrl = process.env.AXERNEL_BASE_URL ?? "http://127.0.0.1:8000"
@@ -87,7 +87,11 @@ export async function authenticate() {
   const credentials = { email, password }
   const auth = await anonymous.auth
     .login(credentials)
-    .catch(() => anonymous.auth.signup({ name: "Developer", ...credentials, org: { name: "WalkThroughPark" } }))
+    // Only a rejected login means "no such account yet". A network error must surface as itself.
+    .catch((error: unknown) => {
+      if (!(error instanceof AuthenticationError)) throw error
+      return anonymous.auth.signup({ name: "Developer", ...credentials, org: { name: "WalkThroughPark" } })
+    })
   return new Axernel({ baseUrl, apiKey: auth.token })
 }
 
