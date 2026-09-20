@@ -151,3 +151,44 @@ li.done span {
   font-size: 0.9rem;
   color: var(--muted);
 }
+
+footer {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-top: 20px;
+}
+
+footer .count {
+  margin: 0;
+}
+
+.filters {
+  display: flex;
+  gap: 6px;
+}
+
+.filters button,
+.clear {
+  padding: 6px 12px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: var(--card);
+  color: var(--text);
+  font: inherit;
+  font-size: 0.9rem;
+  cursor: pointer;
+}
+
+.filters button[aria-pressed='true'] {
+  border-color: var(--accent);
+  background: var(--accent);
+  color: #fff;
+}
+
+.clear:disabled {
+  color: var(--muted);
+  cursor: not-allowed;
+}

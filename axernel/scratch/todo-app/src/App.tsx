@@ -4,6 +4,9 @@ export const STORAGE_KEY = 'todo-app:todos';
 
 type Todo = { id: string; text: string; done: boolean };
 
+const FILTERS = ['All', 'Active', 'Completed'] as const;
+type Filter = (typeof FILTERS)[number];
+
 function loadTodos(): Todo[] {
   try {
     const parsed: unknown = JSON.parse(localStorage.getItem(STORAGE_KEY) ?? '[]');
@@ -16,6 +19,7 @@ function loadTodos(): Todo[] {
 export function App() {
   const [todos, setTodos] = useState<Todo[]>(loadTodos);
   const [draft, setDraft] = useState('');
+  const [filter, setFilter] = useState<Filter>('All');
 
   useEffect(() => {
     localStorage.setItem(STORAGE_KEY, JSON.stringify(todos));
@@ -32,6 +36,10 @@ export function App() {
   }
 
   const remaining = todos.filter((todo) => !todo.done).length;
+  const completed = todos.length - remaining;
+  const visible = todos.filter(
+    (todo) => filter === 'All' || (filter === 'Completed' ? todo.done : !todo.done),
+  );
 
   return (
     <main>
@@ -54,9 +62,11 @@ export function App() {
 
       {todos.length === 0 ? (
         <p className="empty">Nothing to do yet. Add your first todo above.</p>
+      ) : visible.length === 0 ? (
+        <p className="empty">No {filter.toLowerCase()} todos.</p>
       ) : (
         <ul>
-          {todos.map((todo) => (
+          {visible.map((todo) => (
             <li key={todo.id} className={todo.done ? 'done' : undefined}>
               <label>
                 <input
@@ -83,9 +93,33 @@ export function App() {
         </ul>
       )}
 
-      <p className="count" role="status">
-        {remaining} {remaining === 1 ? 'item' : 'items'} left
-      </p>
+      <footer>
+        <p className="count" role="status">
+          {remaining} {remaining === 1 ? 'item' : 'items'} left
+        </p>
+
+        <div className="filters" role="group" aria-label="Filter todos">
+          {FILTERS.map((name) => (
+            <button
+              key={name}
+              type="button"
+              aria-pressed={filter === name}
+              onClick={() => setFilter(name)}
+            >
+              {name}
+            </button>
+          ))}
+        </div>
+
+        <button
+          type="button"
+          className="clear"
+          disabled={completed === 0}
+          onClick={() => setTodos((prev) => prev.filter((todo) => !todo.done))}
+        >
+          Clear completed
+        </button>
+      </footer>
     </main>
   );
 }
