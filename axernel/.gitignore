@@ -5,3 +5,4 @@ dist/
 .wtp.json
 .argo/
 videos/
+.env
