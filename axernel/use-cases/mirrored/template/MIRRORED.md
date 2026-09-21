@@ -1,6 +1,7 @@
 # Mirrored toolkit
 
-Four commands are on PATH. Each prints `MIR_OK ...` or `MIR_ERROR: <reason>` as its last line.
+Four commands are on PATH. This file is complete: do not read the tools' source code or the harness folder.
+Every tool prints a `CLOCK` line; the run is cut off at 30 minutes, and a run that never reached `mir-pack` is worth nothing. Each prints `MIR_OK ...` or `MIR_ERROR: <reason>` as its last line.
 Work in `/tmp/mirror`. Use this layout exactly; the tools depend on it.
 
 ```
@@ -76,10 +77,10 @@ Each token becomes a Tailwind v4 theme variable, and so a utility class:
 - Responsive with Tailwind breakpoints; check against `original-390.png`.
 - Images: take paths as props; in `preview.tsx` pass `../measure/assets/<file>`. Inline SVG icons from
   `dom.json` as JSX.
-- Font files are licensed. The preview may load them so the score is fair, but never copy them into `registry/`;
-  `mir-pack` leaves font files out of the bundle. Name the fonts and where to get them in README.md.
-- Web fonts: if `fonts.json` gives a public URL, say how to load it in README.md; the preview may add a
-  `<link>` or `<style>` with `@font-face`. Otherwise use the closest system font and say so in caveats.
+- Fonts need no work from you. `mir-measure --selector` fetches the web fonts the element uses, and `mir-reflect`
+  loads them into the render by itself. Use the family names from `counts.json` in `tokens.json` and nothing else:
+  no `@font-face`, no `<link>`, no copying font files. `mir-pack` never ships them (they are licensed); name the
+  fonts and where to get them in README.md.
 - `preview.tsx` default-exports a component that returns the rebuilt component inside a wrapper carrying
   the attribute `data-mirror-root`, laid out as on the original page (usually `<div data-mirror-root>`
   with nothing else). That wrapper is what gets compared.

@@ -48,7 +48,7 @@ const markup = run(join(HARNESS, "node_modules/.bin/tsx"), [join(HARNESS, "ssr.m
 writeFileSync(join(HARNESS, "in.css"), `@import "tailwindcss";\n@source "${registry}";\n@import "${join(work, "theme.css")}";\n`)
 run(join(HARNESS, "node_modules/.bin/tailwindcss"), ["-i", "in.css", "-o", join(build, "styles.css")], { cwd: HARNESS })
 const page = existsSync(join(measure, "page.json")) ? JSON.parse(readFileSync(join(measure, "page.json"), "utf8")) : {}
-writeFileSync(join(build, "index.html"), `<!doctype html><html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><link rel="stylesheet" href="styles.css"></head><body style="margin:0;background:${page.pageBackground || "#fff"}">${markup}</body></html>`)
+writeFileSync(join(build, "index.html"), `<!doctype html><html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><link rel="stylesheet" href="styles.css"><style>${existsSync(join(measure, "fonts.css")) ? readFileSync(join(measure, "fonts.css"), "utf8") : ""}</style></head><body style="margin:0;background:${page.pageBackground || "#fff"}">${markup}</body></html>`)
 
 let browser
 try {
@@ -74,6 +74,8 @@ try {
   for (const p of [...new Set(problems)].slice(0, 8)) console.log(`WARNING ${p}`)
   // Desktop is the headline; the phone width keeps a rebuild from passing on one layout only.
   const score = Math.round((scores[1280] * 0.7 + scores[390] * 0.3) * 10) / 10
+  const started = existsSync("/tmp/.mirror-started") ? Number(readFileSync("/tmp/.mirror-started", "utf8")) : Date.now()
+  console.log(`CLOCK ${Math.round((Date.now() - started) / 60000)} min used. Hard limit 30. Run mir-pack by minute 22 whatever the score.`)
   console.log(`MIR_OK score=${score} desktop=${scores[1280]} phone=${scores[390]}`)
 } catch (error) {
   fail(String(error.message || error).split("\n")[0])

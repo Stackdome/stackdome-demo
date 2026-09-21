@@ -5,7 +5,7 @@
 // Always: counts design values (counts.json), lists fonts (fonts.json), saves images (assets/).
 // Last line is MIR_OK or MIR_ERROR: <reason>.
 import { createRequire } from "node:module"
-import { mkdirSync, writeFileSync } from "node:fs"
+import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs"
 import { join } from "node:path"
 import { textRects } from "/opt/mirrored/text-rects.mjs"
 
@@ -24,6 +24,14 @@ const fail = (reason) => {
 if (!url || !outDir) fail("usage: mir-measure <url> <outDir> [--selector <css>]")
 if (flag && flag !== "--selector") fail(`unknown flag ${flag}`)
 mkdirSync(join(outDir, "assets"), { recursive: true })
+
+// The model has no clock and the run has a hard limit, so every tool says how much is used.
+const clock = () => {
+  const stamp = "/tmp/.mirror-started"
+  if (!existsSync(stamp)) writeFileSync(stamp, String(Date.now()))
+  const minutes = Math.round((Date.now() - Number(readFileSync(stamp, "utf8"))) / 60000)
+  return `CLOCK ${minutes} min used. Hard limit 30. First mir-reflect by minute 10, run mir-pack by minute 22 whatever the score.`
+}
 
 const MAX_NODES = 400
 const MAX_ASSETS = 20
@@ -100,10 +108,18 @@ function readPage({ selector, maxNodes }) {
       return { selector: cssPath(el), tag: el.tagName.toLowerCase(), class: (el.getAttribute("class") || "").slice(0, 80), text: el.innerText.trim().replace(/\s+/g, " ").slice(0, 120), box: { y: Math.round(r.top + scrollY), w: Math.round(r.width), h: Math.round(r.height) } }
     })
 
+  const fontUrl = (src, base) => {
+    const found = /url\(["']?([^"')]+\.woff2?[^"')]*)["']?\)/.exec(src)
+    try {
+      return found ? new URL(found[1], base || location.href).href : null
+    } catch {
+      return null
+    }
+  }
   const fontFaces = []
   for (const sheet of document.styleSheets) {
     try {
-      for (const rule of sheet.cssRules) if (rule.type === CSSRule.FONT_FACE_RULE) fontFaces.push({ family: rule.style.fontFamily, weight: rule.style.fontWeight, src: rule.style.src.slice(0, 400) })
+      for (const rule of sheet.cssRules) if (rule.type === CSSRule.FONT_FACE_RULE) fontFaces.push({ family: rule.style.fontFamily, weight: rule.style.fontWeight, style: rule.style.fontStyle, src: rule.style.src.slice(0, 400), url: fontUrl(rule.style.src, sheet.href) })
     } catch {
       // Cross-origin sheets refuse cssRules; their fonts still show up in `loaded`.
     }
@@ -163,6 +179,28 @@ try {
     }
   }
 
+  // Fonts the element really uses, fetched so the rebuild is scored in the same typeface.
+  // mir-reflect loads fonts.css by itself and mir-pack never ships the files: they are licensed.
+  const plain = (family) => family.replace(/["']/g, "").trim().toLowerCase()
+  const used = new Set(data.counts.fontFamilies.flatMap((f) => f.value.split(",").map(plain)))
+  const fontRules = []
+  if (selector) {
+    mkdirSync(join(outDir, "fonts"), { recursive: true })
+    for (const face of data.fonts.fontFaces.filter((f) => f.url && used.has(plain(f.family))).slice(0, 8)) {
+      try {
+        const res = await page.request.get(face.url, { timeout: 10_000 })
+        const body = await res.body()
+        if (!res.ok() || body.length > MAX_ASSET_BYTES) continue
+        const name = `${fontRules.length}-${new URL(face.url).pathname.split("/").pop().replace(/[^\w.-]/g, "").slice(-50)}`
+        writeFileSync(join(outDir, "fonts", name), body)
+        fontRules.push(`@font-face { font-family: ${face.family}; font-weight: ${face.weight || "normal"}; font-style: ${face.style || "normal"}; src: url("../measure/fonts/${name}"); }`)
+      } catch {
+        // A font that will not download only costs score.
+      }
+    }
+    writeFileSync(join(outDir, "fonts.css"), fontRules.join("\n"))
+  }
+
   const write = (name, value) => writeFileSync(join(outDir, name), JSON.stringify(value, null, 2))
   write("counts.json", data.counts)
   write("fonts.json", data.fonts)
@@ -177,6 +215,8 @@ try {
   console.log(`top backgrounds: ${data.counts.backgrounds.slice(0, 4).map((c) => c.value).join(" | ")}`)
   console.log(`fonts loaded: ${data.fonts.loaded.slice(0, 6).join(", ") || "none reported"}`)
   console.log(`assets saved: ${saved.length}`)
+  if (selector) console.log(`web fonts fetched for scoring: ${fontRules.length} (mir-reflect loads them by itself; just use the family names)`)
+  console.log(clock())
   if (!selector) for (const s of data.outline) console.log(`SECTION ${s.selector}  [${s.box.w}x${s.box.h} at y=${s.box.y}]  ${s.text.slice(0, 70)}`)
   console.log("MIR_OK")
 } catch (error) {
