@@ -1,4 +1,4 @@
-// Shared by setup.ts and smoke.ts. Three parts, top to bottom:
+// Shared by setup.ts, mirror.ts and fetch-artifacts.ts. Three parts, top to bottom:
 //   settings      the only reads of process.env
 //   calculations  names and request bodies, values in and values out
 //   actions       one "ensure X exists" per Axernel resource. Each is find-by-name, then
@@ -7,9 +7,8 @@
 // SDK calls used, and the one thing to know about each:
 //   auth.login / auth.signup        signup only when login fails; the token goes into a second client.
 //   projects.iterate / create       iterate() pages through every project; the API has no find-by-name.
-//   secrets.iterate / create / update   secret data is write-only, so a re-run always overwrites it.
-//   modelProviders.getPlatform      the installation's own provider, used when there is no OpenRouter key.
-//   modelProviders.iterate / create / update   org-owned provider; the token is write-only too.
+//   modelProviders.iterate / create / update   org-owned provider, shared with other apps; the token is
+//                                   write-only, so it is only replaced when .env carries a key.
 //   templates.iterate / create      templates are immutable: a new image digest means a new template.
 //   agents.iterate / create / update    update needs expectedRevision (If-Match) and makes a new
 //                                   revision. Sessions pin the revision they were created with.
@@ -30,6 +29,7 @@ export function requireEnv(name: string): string {
 }
 
 // --- Calculations --------------------------------------------------------------
+// The provider belongs to the organisation and WalkThroughPark created it first; the name is how we find it again.
 export const providerName = (modelName: string) => `WalkThroughPark ${modelName}`
 
 // Named after the digest, so each pushed image gets its own template.
@@ -54,12 +54,11 @@ const templateRequest = (imageRef: string) => ({
     { name: "mir-measure", description: "Screenshots a page or element and dumps its computed styles. Read /opt/mirrored/MIRRORED.md first." },
     { name: "mir-reflect", description: "Renders a rebuilt component and scores it against the original screenshot." },
     { name: "mir-pack", description: "Builds tokens.css, tailwind.config.js and bundle.zip, and fills the artifact directory." },
-    { name: "playwright", description: "Playwright with Chromium, installed in /opt/walkthrough." },
+    { name: "mir-brand", description: "Measures the whole site's design system with Dembrandt." },
+    { name: "playwright", description: "Playwright with Chromium; require it from /opt/walkthrough as @playwright/test." },
     { name: "node", description: "Node.js and npm." },
     { name: "python3", description: "Python 3 with Pillow." },
     { name: "git", description: "Git client." },
-    { name: "gh", description: "GitHub CLI, authenticated through GH_TOKEN." },
-    { name: "ffmpeg", description: "ffmpeg and ffprobe." },
   ],
   preparationTimeoutSeconds: 900,
   sandboxMaxLifetimeSeconds: 7200,
@@ -80,7 +79,7 @@ export async function authenticate() {
     // Only a rejected login means "no such account yet". A network error must surface as itself.
     .catch((error: unknown) => {
       if (!(error instanceof AuthenticationError)) throw error
-      return anonymous.auth.signup({ name: "Developer", ...credentials, org: { name: "WalkThroughPark" } })
+      return anonymous.auth.signup({ name: "Developer", ...credentials, org: { name: "Axernel demos" } })
     })
   return new Axernel({ baseUrl, apiKey: auth.token })
 }

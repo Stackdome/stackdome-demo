@@ -15,6 +15,7 @@ import json
 import mimetypes
 import re
 import shutil
+import subprocess
 import sys
 import zipfile
 from pathlib import Path
@@ -29,6 +30,8 @@ VARIABLE_PREFIX = {
     ("spacing",): "spacing",
     ("shadow",): "shadow",
 }
+FONT_SUFFIXES = {".woff", ".woff2", ".ttf", ".otf", ".eot"}  # fonts are licensed; name them in the README, never ship them
+PRETTIER = "/opt/mirrored/harness/node_modules/.bin/prettier"
 COLLECTED = ["original.png", "rebuild.png", "diff.png", "page.png"]
 ITEM_SCHEMA = "https://ui.shadcn.com/schema/registry-item.json"
 
@@ -207,6 +210,9 @@ def main(work_dir, target):
 
     out = Path(target)
     out.mkdir(parents=True, exist_ok=True)
+    # Sorted Tailwind classes and one code style; a formatting failure must not lose the run.
+    if Path(PRETTIER).exists():
+        subprocess.run([PRETTIER, "--write", "--log-level", "silent", "--plugin", "prettier-plugin-tailwindcss", *map(str, (work / "registry").glob("*.tsx"))], cwd="/opt/mirrored/harness", check=False, timeout=120)
     items = registry_items(work, theme)
     if items:
         with zipfile.ZipFile(out / "registry.zip", "w", zipfile.ZIP_DEFLATED) as archive:
@@ -220,7 +226,7 @@ def main(work_dir, target):
                 archive.write(work / name, name)
         for folder, prefix in (("registry", "components"), ("measure/assets", "assets")):
             for file in sorted((work / folder).glob("*")) if (work / folder).exists() else []:
-                if file.is_file() and file.name != "tsconfig.json":
+                if file.is_file() and file.name != "tsconfig.json" and file.suffix.lower() not in FONT_SUFFIXES:
                     archive.write(file, f"{prefix}/{file.name}")
     shutil.copy(work / "tokens.json", out / "tokens.json")
     if (work / "brand" / "report.html").exists():

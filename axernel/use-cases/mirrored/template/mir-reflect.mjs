@@ -8,8 +8,11 @@ import { createRequire } from "node:module"
 import { execFileSync } from "node:child_process"
 import { existsSync, mkdirSync, readFileSync, symlinkSync, writeFileSync } from "node:fs"
 import { join, resolve } from "node:path"
+import { compareRects, textRects } from "/opt/mirrored/text-rects.mjs"
 
 process.env.PLAYWRIGHT_BROWSERS_PATH ||= "/ms-playwright"
+// An agent that pipes this into `head` closes the pipe early; that must not crash the tool.
+process.stdout.on("error", () => {})
 const HARNESS = "/opt/mirrored/harness"
 const require = createRequire("/opt/walkthrough/")
 // @playwright/test is the copy pinned to the browsers baked into this image; bare "playwright" resolves to a newer one.
@@ -64,6 +67,8 @@ try {
     await root.screenshot({ path: join(measure, `rebuild${suffix}.png`) })
     const out = run("python3", ["/usr/local/bin/mir-diff.py", join(measure, `original${suffix}.png`), join(measure, `rebuild${suffix}.png`), join(measure, `diff${suffix}.png`)])
     console.log(`--- ${width}px wide\n${out.trim()}`)
+    const rectsFile = join(measure, `rects${suffix}.json`)
+    if (existsSync(rectsFile)) for (const line of compareRects(JSON.parse(readFileSync(rectsFile, "utf8")), await tab.evaluate(textRects, "[data-mirror-root]"))) console.log(line)
     scores[width] = Number(/SCORE (\S+)/.exec(out)?.[1])
   }
   for (const p of [...new Set(problems)].slice(0, 8)) console.log(`WARNING ${p}`)

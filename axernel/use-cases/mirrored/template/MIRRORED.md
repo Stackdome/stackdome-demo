@@ -76,6 +76,8 @@ Each token becomes a Tailwind v4 theme variable, and so a utility class:
 - Responsive with Tailwind breakpoints; check against `original-390.png`.
 - Images: take paths as props; in `preview.tsx` pass `../measure/assets/<file>`. Inline SVG icons from
   `dom.json` as JSX.
+- Font files are licensed. The preview may load them so the score is fair, but never copy them into `registry/`;
+  `mir-pack` leaves font files out of the bundle. Name the fonts and where to get them in README.md.
 - Web fonts: if `fonts.json` gives a public URL, say how to load it in README.md; the preview may add a
   `<link>` or `<style>` with `@font-face`. Otherwise use the closest system font and say so in caveats.
 - `preview.tsx` default-exports a component that returns the rebuilt component inside a wrapper carrying
@@ -85,8 +87,13 @@ Each token becomes a Tailwind v4 theme variable, and so a utility class:
 ## 4. mir-reflect /tmp/mirror
 
 Builds the theme from `tokens.json`, renders `preview.tsx` to static HTML, compiles Tailwind, saves
-`rebuild.png` and `diff.png`, prints a score per width, up to three `REGION <where> <n>% different`
-lines, and `WARNING` lines for anything that failed to load. A TypeScript or Tailwind error comes back
+`rebuild.png` and `diff.png`, and prints, per width:
+- `SCORE` and `SIZE original=WxH rebuild=WxH`
+- `BOX x= y= w= h=: N px differ, average colour original #.. rebuild #..`: the largest mismatched areas, exactly
+- `TEXT "<words>" at x= y=: dy +6px, size 15px should be 16px`: each text that sits or is set differently,
+  `MISSING` / `EXTRA` for text only one side has
+- `REGION <where> <n>% different` and `WARNING` lines for anything that failed to load
+These lines already say where and what; do not write your own image-analysis scripts. A TypeScript or Tailwind error comes back
 as `MIR_ERROR` with the message. Fix the largest region first and run again.
 A `SIZE` mismatch is the first thing to fix: wrong height or width costs more than any colour.
 

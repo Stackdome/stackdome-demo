@@ -7,8 +7,11 @@
 import { createRequire } from "node:module"
 import { mkdirSync, writeFileSync } from "node:fs"
 import { join } from "node:path"
+import { textRects } from "/opt/mirrored/text-rects.mjs"
 
 process.env.PLAYWRIGHT_BROWSERS_PATH ||= "/ms-playwright"
+// An agent that pipes this into `head` closes the pipe early; that must not crash the tool.
+process.stdout.on("error", () => {})
 const require = createRequire("/opt/walkthrough/")
 // @playwright/test is the copy pinned to the browsers baked into this image; bare "playwright" resolves to a newer one.
 const { chromium } = require("@playwright/test")
@@ -138,10 +141,13 @@ try {
     if (selector) await page.locator(selector).first().screenshot({ path: join(outDir, `original${suffix}.png`) })
     else await page.screenshot({ path: join(outDir, `page${suffix}.png`), fullPage: true })
   }
+  const rects = async (suffix) => selector && writeFileSync(join(outDir, `rects${suffix}.json`), JSON.stringify(await page.evaluate(textRects, selector)))
   await shoot("")
+  await rects("")
   await page.setViewportSize({ width: 390, height: 800 })
   await page.waitForTimeout(300)
   await shoot("-390")
+  await rects("-390")
 
   const saved = []
   for (const src of [...data.brandImages, ...data.images].slice(0, MAX_ASSETS)) {
