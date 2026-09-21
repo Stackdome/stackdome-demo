@@ -102,13 +102,16 @@ async function openRouterPricing() {
   return pricingPerMillion(entry.pricing)
 }
 
+const INPUT_MODALITIES = ["text", "image"] as const
+
 export async function ensureModelProvider(axernel: Axernel) {
   const token = openRouterToken
   const name = providerName(model)
   const existing = await find(axernel.modelProviders.iterate(), (candidate) => candidate.name === name)
   // Providers belong to the organisation, so one another app set up is reused as it is.
   // The stored token is write-only: a key in .env replaces it, no key leaves it alone.
-  if (existing) return token ? axernel.modelProviders.update(existing.id, { token }) : existing
+  // Without declared modalities Axernel tells the harness the model is text only, and screenshots never reach it.
+  if (existing) return axernel.modelProviders.update(existing.id, { inputModalities: INPUT_MODALITIES, ...(token ? { token } : {}) })
   if (!token) throw new Error(`No model provider named "${name}" exists yet. Set OPENROUTER_API_KEY in bootstrap/.env to create it.`)
   return axernel.modelProviders.create({
     name,
@@ -117,6 +120,7 @@ export async function ensureModelProvider(axernel: Axernel) {
     modelName: model,
     token,
     pricing: await openRouterPricing(),
+    inputModalities: INPUT_MODALITIES,
   })
 }
 
