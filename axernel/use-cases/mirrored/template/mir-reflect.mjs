@@ -76,6 +76,7 @@ try {
   const score = Math.round((scores[1280] * 0.7 + scores[390] * 0.3) * 10) / 10
   const started = existsSync("/tmp/.mirror-started") ? Number(readFileSync("/tmp/.mirror-started", "utf8")) : Date.now()
   console.log(`CLOCK ${Math.round((Date.now() - started) / 60000)} min used. Hard limit 30. Run mir-pack by minute 22 whatever the score.`)
+  if (score >= 95) console.log("DONE: 95 or more. Stop improving and run mir-pack now.")
   console.log(`MIR_OK score=${score} desktop=${scores[1280]} phone=${scores[390]}`)
 } catch (error) {
   fail(String(error.message || error).split("\n")[0])

@@ -20,21 +20,23 @@ Measures the whole page's design system with Dembrandt and prints its semantic c
 text styles, components seen and breakpoints. Files land in `brand/`: `site.json`, `site.tokens.json`,
 `theme.css`, `shadcn.css`, `report.html`. Run it first, in both modes. In section mode it tells you the
 site-wide role of each value, so your token names (`primary`, `background`, `text`) agree with the rest
-of the site; read more with `jq` from `brand/site.json` (for example `.components.links`, `.motion`,
-`.breakpoints`). If it fails, carry on without it and say so in caveats.
+of the site; the printed summary is all you need; `brand/site.json` is 20 KB, so never print it whole. If it fails, carry on without it and say so in caveats.
 
 ## 1. mir-measure <url> /tmp/mirror/measure [--selector <css>]
 
-- Without `--selector`: saves `page.png`, and prints one `SECTION <selector> [WxH at y=] <text>` line per
-  candidate section. Pick the one that matches the request.
+- With `--find "<a few words that appear in the section>"` (words only that part has, such as a price or a button label: `--find "$20 Get started"`): prints the
+  smallest elements containing all those words as `SECTION <selector> [WxH at y=] <text>` lines. Start here.
+- With nothing: saves `page.png` and lists every candidate section the same way.
+- Pick the SECTION that matches the request; never write your own script to find an element.
 - With `--selector`: saves `original.png` (1280 wide) and `original-390.png`, and writes
   - `dom.json`: the element tree with box sizes and the computed styles that matter
   - `counts.json`: colours, backgrounds, font families, sizes, weights, radii, shadows, spacing, by use count
   - `fonts.json`: fonts the page loaded and its @font-face sources
   - `assets.json` and `assets/`: images inside the element, plus favicon and share image
 - The files are large. Read them with `jq` in slices (for example `jq '.children[0]' dom.json`), never whole.
-- If you can view images, look at `original.png`. If you cannot, inspect it with Pillow (size, colours at
-  points, bounding boxes of non-background pixels) rather than guessing.
+- `dom.json` has everything a rebuild needs: each node's `box` (x, y, w, h relative to the section), only the styles that
+  differ from its parent, `borders` per side, `::before` / `::after`, and each distinct SVG once. One card is about 7 KB:
+  `jq -c '.children[0]' dom.json`. Never print a whole JSON file; keep any output under 3000 characters (`| head -c 3000`).
 
 ## 2. tokens.json (W3C Design Tokens format)
 

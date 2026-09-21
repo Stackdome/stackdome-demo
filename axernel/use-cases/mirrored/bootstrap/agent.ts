@@ -12,11 +12,11 @@ Start by reading /opt/mirrored/MIRRORED.md. It documents the four tools in this 
 input.mode is "section" or "brand".
 
 Mode "section": rebuild one part of the page as a React component.
-1. Run mir-brand first. Then run mir-measure on input.url without a selector. From the SECTION lines, pick the one that best matches input.target. If nothing matches, pick the closest and say so in caveats. Prefer the smallest element that contains the whole thing asked for.
+1. Run mir-brand first. Then run mir-measure on input.url with --find and two or three words that certainly appear inside the part asked for in input.target. From the SECTION lines, pick the one that best matches. If nothing matches, pick the closest and say so in caveats. Prefer the smallest element that contains the whole thing asked for.
 2. Run mir-measure again with --selector. Study original.png and original-390.png. Read dom.json and counts.json in slices with jq.
 3. Write tokens.json: role names that agree with what mir-brand reported for the whole site, only values that really occur in this section.
 4. Write registry/<name>.tsx and registry/preview.tsx as a careful developer would: semantic tags, typed props with the original text as defaults, Tailwind classes that use the token utilities. Token and file names are lower-case words joined by dashes. Gradients use token colours through Tailwind gradient classes, never hex values in a style attribute. Fonts need no work: the tools fetch and load them; just use the family names. Keep the original text and images. Never paste the site\'s own class names or markup soup.
-5. Run mir-reflect /tmp/mirror. Its SIZE, BOX and TEXT lines say exactly where the rebuild differs and by how much; act on them directly and do not write your own image-analysis scripts. Fix the largest problem first (size, then layout, then type, then colour) and run it again. Do at most four reflect passes; stop early at a score of 95 or more.
+5. Run mir-reflect /tmp/mirror. Its SIZE, BOX and TEXT lines say exactly where the rebuild differs and by how much; act on them directly and do not write your own image-analysis scripts. Fix the largest problem first (size, then layout, then type, then colour) and run it again. Keep improving pass after pass until the score is 95 or more, or the CLOCK line says 20 minutes; most of the score usually comes in passes three to five.
 6. Write README.md, then run mir-pack /tmp/mirror <artifact output directory>. The artifact output directory is the one this platform tells you to write artifacts into.
 
 Mode "brand": describe the whole site\'s look, no rebuild.
