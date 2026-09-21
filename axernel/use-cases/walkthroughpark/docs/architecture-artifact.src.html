@@ -1,0 +1,495 @@
+<title>WalkThroughPark on Axernel</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400;9..144,500&family=Geist:wght@400;500&family=JetBrains+Mono:wght@400;500&display=swap">
+<style>
+  :root {
+    --ground: #F5F4F1; --surface: #FFFFFF; --ink: #191714; --muted: #6B6760;
+    --line: rgba(25, 23, 20, 0.14); --brand: #FF6007; --brand-ink: #B8430A;
+    --brand-wash: rgba(255, 96, 7, 0.09); --brand-line: rgba(255, 96, 7, 0.38);
+    --code: #EFEDE8;
+    --serif: "Fraunces", Georgia, serif;
+    --sans: "Geist", ui-sans-serif, system-ui, sans-serif;
+    --mono: "JetBrains Mono", ui-monospace, "SF Mono", Menlo, monospace;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      --ground: #1B1917; --surface: #24211E; --ink: #EDEAE4; --muted: #A39E95;
+      --line: rgba(237, 234, 228, 0.16); --brand: #FF7A2E; --brand-ink: #FF9A5E;
+      --brand-wash: rgba(255, 122, 46, 0.12); --brand-line: rgba(255, 122, 46, 0.45);
+      --code: #2C2925;
+    }
+  }
+  :root[data-theme="dark"] {
+    --ground: #1B1917; --surface: #24211E; --ink: #EDEAE4; --muted: #A39E95;
+    --line: rgba(237, 234, 228, 0.16); --brand: #FF7A2E; --brand-ink: #FF9A5E;
+    --brand-wash: rgba(255, 122, 46, 0.12); --brand-line: rgba(255, 122, 46, 0.45);
+    --code: #2C2925;
+  }
+
+  body { background: var(--ground); color: var(--ink); font: 400 16px/1.6 var(--sans); padding-inline: 20px; }
+  .page { max-width: 1040px; margin-inline: auto; padding-block: 56px 80px; display: flex; flex-direction: column; gap: 72px; }
+  a { color: var(--brand-ink); text-underline-offset: 3px; }
+  a:focus-visible { outline: 2px solid var(--brand); outline-offset: 2px; border-radius: 3px; }
+  h1, h2 { font-family: var(--serif); font-weight: 500; text-wrap: balance; margin: 0; letter-spacing: -0.01em; }
+  h1 { font-size: clamp(2.1rem, 5vw, 3.4rem); line-height: 1.06; }
+  h2 { font-size: clamp(1.5rem, 3vw, 2rem); line-height: 1.15; }
+  h3 { font: 500 1rem/1.3 var(--sans); margin: 0; }
+  p { margin: 0; max-width: 66ch; }
+  .eyebrow { font: 500 0.75rem/1 var(--mono); letter-spacing: 0.09em; text-transform: uppercase; color: var(--brand-ink); }
+  .lede { font-size: 1.15rem; color: var(--muted); }
+  .muted { color: var(--muted); }
+  code, .mono { font-family: var(--mono); font-size: 0.86em; }
+  code { background: var(--code); padding: 0.08em 0.36em; border-radius: 4px; }
+  section { display: flex; flex-direction: column; gap: 22px; }
+  .head { display: flex; flex-direction: column; gap: 10px; }
+
+  /* hero */
+  .hero { display: grid; grid-template-columns: minmax(0, 1.05fr) minmax(0, 1fr); gap: 40px; align-items: center; }
+  .hero-copy { display: flex; flex-direction: column; gap: 18px; }
+  .shots { position: relative; padding-bottom: 46px; }
+  .shots img { display: block; max-width: 100%; border: 1px solid var(--line); border-radius: 10px; background: var(--surface); }
+  .shots .frame { position: absolute; right: -6px; bottom: 0; width: 52%; box-shadow: 0 10px 30px rgba(0, 0, 0, 0.22); }
+  .facts { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 0; border-block: 1px solid var(--line); }
+  .fact { padding: 18px 16px 18px 0; display: flex; flex-direction: column; gap: 4px; }
+  .fact + .fact { padding-left: 16px; border-left: 1px solid var(--line); }
+  .fact b { font: 500 1.7rem/1.1 var(--serif); font-variant-numeric: tabular-nums; }
+  .fact span { color: var(--muted); font-size: 0.9rem; }
+
+  /* figures */
+  figure { margin: 0; display: flex; flex-direction: column; gap: 10px; }
+  .scroll { overflow-x: auto; border: 1px solid var(--line); border-radius: 12px; background: var(--surface); }
+  .scroll svg { display: block; width: 100%; min-width: 860px; height: auto; color: var(--ink); }
+  figcaption { color: var(--muted); font-size: 0.92rem; max-width: 80ch; }
+  .legend { display: flex; flex-wrap: wrap; gap: 8px 20px; font-size: 0.85rem; color: var(--muted); }
+  .key { display: inline-flex; align-items: center; gap: 8px; }
+  .swatch { width: 18px; height: 12px; border-radius: 3px; border: 1.5px solid var(--ink); }
+  .swatch.ax { background: var(--brand-wash); border-color: var(--brand); }
+  .swatch.ext { border-style: dashed; border-color: var(--muted); }
+  svg text { font-family: var(--sans); font-size: 12.5px; fill: currentColor; }
+  svg .t-mono { font-family: var(--mono); font-size: 11px; }
+  svg .t-muted { fill: var(--muted); }
+  svg .t-brand { fill: var(--brand-ink); font-weight: 500; }
+  svg .t-title { font-weight: 500; font-size: 13px; }
+  svg .yours { fill: var(--surface); stroke: currentColor; stroke-width: 1.5; }
+  svg .ax-region { fill: var(--brand-wash); stroke: var(--brand-line); stroke-width: 1.5; }
+  svg .ax { fill: var(--surface); stroke: var(--brand); stroke-width: 1.5; }
+  svg .ext { fill: none; stroke: var(--muted); stroke-width: 1.5; stroke-dasharray: 5 4; }
+  svg .wire { stroke: currentColor; stroke-width: 1.5; fill: none; }
+  svg .wire-ax { stroke: var(--brand); stroke-width: 2; fill: none; }
+  svg .head-ink { fill: currentColor; }
+  svg .head-ax { fill: var(--brand); }
+
+  /* two lists */
+  .split { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 0; border: 1px solid var(--line); border-radius: 12px; overflow: hidden; background: var(--surface); }
+  .split > div { padding: 24px; display: flex; flex-direction: column; gap: 14px; }
+  .split > div + div { background: var(--brand-wash); border-left: 1px solid var(--brand-line); }
+  .split ul, .plain { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 10px; }
+  .split li { display: grid; grid-template-columns: 1fr auto; gap: 12px; align-items: baseline; font-size: 0.95rem; }
+  .split li span:last-child { font: 400 0.8rem var(--mono); color: var(--muted); white-space: nowrap; }
+  .tag { font: 500 0.72rem/1 var(--mono); letter-spacing: 0.08em; text-transform: uppercase; color: var(--muted); }
+  .split > div + div .tag { color: var(--brand-ink); }
+
+  /* code cards */
+  .trio { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 16px; }
+  .card { border: 1px solid var(--line); border-radius: 12px; background: var(--surface); padding: 18px; display: flex; flex-direction: column; gap: 10px; min-width: 0; }
+  pre { margin: 0; font: 400 0.78rem/1.55 var(--mono); background: var(--code); border-radius: 8px; padding: 12px; overflow-x: auto; }
+  .card p { font-size: 0.92rem; color: var(--muted); }
+  .src { font: 400 0.78rem var(--mono); }
+
+  /* tables */
+  .tablewrap { overflow-x: auto; border: 1px solid var(--line); border-radius: 12px; background: var(--surface); }
+  table { border-collapse: collapse; width: 100%; min-width: 760px; font-size: 0.92rem; }
+  th, td { text-align: left; padding: 12px 16px; border-bottom: 1px solid var(--line); vertical-align: top; }
+  th { font: 500 0.72rem/1 var(--mono); letter-spacing: 0.08em; text-transform: uppercase; color: var(--muted); }
+  tr:last-child td { border-bottom: 0; }
+  td.num { font-variant-numeric: tabular-nums; white-space: nowrap; }
+  td code { white-space: nowrap; }
+
+  /* timeline + lifecycle */
+  .versions { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 16px; }
+  .versions .card b { font: 500 0.95rem var(--mono); }
+  .life { list-style: none; margin: 0; padding: 0; display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 0; border: 1px solid var(--line); border-radius: 12px; overflow: hidden; background: var(--surface); counter-reset: step; }
+  .life li { padding: 18px; display: flex; flex-direction: column; gap: 8px; font-size: 0.92rem; counter-increment: step; }
+  .life li + li { border-left: 1px solid var(--line); }
+  .life li::before { content: counter(step); font: 500 0.75rem var(--mono); color: var(--brand-ink); }
+  .life b { font: 500 1rem var(--mono); }
+  .life span { color: var(--muted); }
+
+  /* links + capabilities */
+  .doors { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 12px; }
+  .door { border: 1px solid var(--brand-line); background: var(--brand-wash); border-radius: 10px; padding: 14px 16px; text-decoration: none; color: var(--ink); display: flex; flex-direction: column; gap: 4px; }
+  .door:hover { border-color: var(--brand); }
+  .door b { font-weight: 500; }
+  .door span { font: 400 0.78rem var(--mono); color: var(--muted); overflow-wrap: anywhere; }
+  .caps { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 0 40px; }
+  .cap { padding: 16px 0; border-top: 1px solid var(--line); display: grid; grid-template-columns: 190px 1fr; gap: 16px; font-size: 0.95rem; }
+  .cap b { font-weight: 500; }
+  .cap span { color: var(--muted); }
+  details { border: 1px solid var(--line); border-radius: 12px; padding: 16px 20px; background: var(--surface); }
+  summary { cursor: pointer; font-weight: 500; }
+  details ul { margin: 14px 0 0; padding-left: 20px; display: flex; flex-direction: column; gap: 8px; color: var(--muted); font-size: 0.95rem; }
+  footer { border-top: 1px solid var(--line); padding-top: 20px; color: var(--muted); font-size: 0.9rem; display: flex; flex-wrap: wrap; gap: 8px 24px; }
+
+  @media (max-width: 820px) {
+    .hero, .split, .trio, .versions, .caps { grid-template-columns: minmax(0, 1fr); }
+    .split > div + div { border-left: 0; border-top: 1px solid var(--brand-line); }
+    .facts, .life, .doors { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+    .fact:nth-child(3) { padding-left: 0; border-left: 0; }
+    .fact:nth-child(n+3) { border-top: 1px solid var(--line); }
+    .life li:nth-child(3) { border-left: 0; }
+    .life li:nth-child(n+3) { border-top: 1px solid var(--line); }
+    .cap { grid-template-columns: minmax(0, 1fr); gap: 4px; }
+    .page { gap: 56px; padding-block: 36px 56px; }
+  }
+</style>
+
+<div class="page">
+
+  <header class="hero">
+    <div class="hero-copy">
+      <span class="eyebrow">Built on Axernel</span>
+      <h1>A pull request goes in. A narrated demo video comes out.</h1>
+      <p class="lede">WalkThroughPark reads a GitHub repo or PR, boots the app in a sandbox, scripts a demo, records it with voice and captions, and hands back the video. We wrote a prompt, a Docker image and a thin web app. Axernel ran everything in between.</p>
+      <p class="muted">This page shows where each piece lives, with links into the code and into the Axernel console.</p>
+    </div>
+    <div class="shots">
+      <img src="data:image/jpeg;base64,__UI_B64__" alt="WalkThroughPark showing a finished walkthrough: a rail of past walks, the generated video with scene chips, and tabs for overview, scenes and field notes.">
+      <img class="frame" src="data:image/jpeg;base64,__FRAME_B64__" alt="A frame from a generated video: the todo app with its new status filters, and a burned-in caption.">
+    </div>
+  </header>
+
+  <div class="facts">
+    <div class="fact"><b>$0.02</b><span>model cost per video, on DeepSeek flash</span></div>
+    <div class="fact"><b>6 to 10 min</b><span>link pasted to video ready</span></div>
+    <div class="fact"><b>5 functions</b><span>are the whole SDK surface of the web app</span></div>
+    <div class="fact"><b>0 lines</b><span>of queue, sandbox, secrets or streaming infrastructure</span></div>
+  </div>
+
+  <section>
+    <div class="head">
+      <span class="eyebrow">Architecture</span>
+      <h2>Where the work happens</h2>
+      <p>The web app never touches a sandbox, a model or a queue. It makes SDK calls to Axernel and reads back events, a validated result and files.</p>
+    </div>
+    <figure>
+      <div class="scroll">
+        <svg viewBox="0 0 1000 440" role="img" aria-label="Request path: the browser talks to the WalkThroughPark server, which calls Axernel through the SDK. Axernel owns the API, database, worker and stores, creates a Modal sandbox from our template image, and the agent inside it calls the model and GitHub. Events, the result and artifacts flow back through Axernel.">
+          <defs>
+            <marker id="a-ink" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0 0 L10 5 L0 10 z" class="head-ink"/></marker>
+            <marker id="a-ax" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0 0 L10 5 L0 10 z" class="head-ax"/></marker>
+          </defs>
+
+          <rect class="yours" x="20" y="170" width="120" height="70" rx="8"/>
+          <text class="t-title" x="80" y="200" text-anchor="middle">Browser</text>
+          <text class="t-muted" x="80" y="220" text-anchor="middle">paste a link</text>
+
+          <rect class="yours" x="200" y="140" width="180" height="130" rx="8"/>
+          <text class="t-title" x="290" y="168" text-anchor="middle">WalkThroughPark</text>
+          <text class="t-muted" x="290" y="188" text-anchor="middle">Next.js server</text>
+          <text class="t-mono" x="290" y="216" text-anchor="middle">startRun · readRun</text>
+          <text class="t-mono" x="290" y="234" text-anchor="middle">streamRunEvents</text>
+          <text class="t-mono" x="290" y="252" text-anchor="middle">downloadArtifact</text>
+
+          <rect class="ax-region" x="440" y="30" width="300" height="380" rx="12"/>
+          <text class="t-brand" x="458" y="58">AXERNEL</text>
+          <text class="t-muted" x="722" y="58" text-anchor="end">you did not build this</text>
+          <rect class="ax" x="458" y="76" width="264" height="62" rx="8"/>
+          <text class="t-title" x="474" y="102">API</text>
+          <text class="t-muted" x="474" y="122">auth, contracts, idempotency, SSE</text>
+          <rect class="ax" x="458" y="152" width="264" height="62" rx="8"/>
+          <text class="t-title" x="474" y="178">State</text>
+          <text class="t-muted" x="474" y="198">sessions, runs, agent revisions, secrets</text>
+          <rect class="ax" x="458" y="228" width="264" height="62" rx="8"/>
+          <text class="t-title" x="474" y="254">Worker</text>
+          <text class="t-muted" x="474" y="274">queue, lease, recover, clean up</text>
+          <rect class="ax" x="458" y="304" width="264" height="62" rx="8"/>
+          <text class="t-title" x="474" y="330">Stores</text>
+          <text class="t-muted" x="474" y="350">run events, artifacts, usage and cost</text>
+
+          <rect class="ext" x="800" y="30" width="180" height="230" rx="12"/>
+          <text class="t-muted" x="816" y="56">Modal sandbox</text>
+          <rect class="yours" x="816" y="70" width="148" height="52" rx="8"/>
+          <text class="t-title" x="890" y="92" text-anchor="middle">our template image</text>
+          <text class="t-muted" x="890" y="110" text-anchor="middle">Chromium, ffmpeg, voice</text>
+          <rect class="ax" x="816" y="134" width="148" height="46" rx="8"/>
+          <text class="t-title" x="890" y="154" text-anchor="middle">agent harness</text>
+          <text class="t-muted" x="890" y="170" text-anchor="middle">uploaded per run</text>
+          <rect class="yours" x="816" y="192" width="148" height="52" rx="8"/>
+          <text class="t-mono" x="890" y="214" text-anchor="middle">wtp-render</text>
+          <text class="t-muted" x="890" y="232" text-anchor="middle">record, caption, verify</text>
+
+          <rect class="ext" x="800" y="296" width="180" height="46" rx="8"/>
+          <text x="890" y="316" text-anchor="middle">OpenRouter</text>
+          <text class="t-muted" x="890" y="332" text-anchor="middle">DeepSeek flash</text>
+          <rect class="ext" x="800" y="362" width="180" height="46" rx="8"/>
+          <text x="890" y="382" text-anchor="middle">GitHub MCP</text>
+          <text class="t-muted" x="890" y="398" text-anchor="middle">read the PR and repo</text>
+
+          <line class="wire" x1="140" y1="195" x2="198" y2="195" marker-end="url(#a-ink)"/>
+          <line class="wire" x1="198" y1="222" x2="142" y2="222" marker-end="url(#a-ink)"/>
+          <text class="t-muted" x="169" y="186" text-anchor="middle">POST</text>
+          <text class="t-muted" x="169" y="240" text-anchor="middle">live feed</text>
+
+          <line class="wire-ax" x1="380" y1="190" x2="438" y2="190" marker-end="url(#a-ax)"/>
+          <line class="wire-ax" x1="438" y1="226" x2="382" y2="226" marker-end="url(#a-ax)"/>
+          <text class="t-brand" x="409" y="180" text-anchor="middle">SDK</text>
+          <text class="t-muted" x="409" y="246" text-anchor="middle">events</text>
+          <text class="t-muted" x="409" y="260" text-anchor="middle">result</text>
+          <text class="t-muted" x="409" y="274" text-anchor="middle">files</text>
+
+          <line class="wire-ax" x1="740" y1="150" x2="798" y2="150" marker-end="url(#a-ax)"/>
+          <text class="t-muted" x="769" y="140" text-anchor="middle">create</text>
+          <line class="wire-ax" x1="798" y1="220" x2="742" y2="220" marker-end="url(#a-ax)"/>
+          <text class="t-muted" x="769" y="238" text-anchor="middle">events</text>
+          <text class="t-muted" x="769" y="252" text-anchor="middle">result</text>
+          <text class="t-muted" x="769" y="266" text-anchor="middle">files</text>
+
+          <line class="wire" x1="890" y1="260" x2="890" y2="294" marker-end="url(#a-ink)"/>
+          <path class="wire" d="M 985 200 L 992 200 L 992 385 L 982 385" marker-end="url(#a-ink)"/>
+        </svg>
+      </div>
+      <div class="legend">
+        <span class="key"><span class="swatch"></span>we wrote it</span>
+        <span class="key"><span class="swatch ax"></span>Axernel runs it</span>
+        <span class="key"><span class="swatch ext"></span>third party, reached from the sandbox</span>
+      </div>
+      <figcaption>Every orange arrow is Axernel's. The app's side of the boundary is one file of SDK calls; the sandbox side is one Docker image. Nothing we wrote schedules work, holds a secret in a prompt, or talks to Modal.</figcaption>
+    </figure>
+  </section>
+
+  <section>
+    <div class="head">
+      <span class="eyebrow">Division of labour</span>
+      <h2>What we wrote, and what we did not have to</h2>
+    </div>
+    <div class="split">
+      <div>
+        <span class="tag">We wrote</span>
+        <ul>
+          <li><span>A prompt and two JSON Schemas for the agent</span><span>101 lines</span></li>
+          <li><span>A sandbox image: Playwright, ffmpeg, local voice, one render command</span><span>384 lines</span></li>
+          <li><span>A setup script that creates the agent in Axernel</span><span>~250 lines</span></li>
+          <li><span>The web app: form, live feed, player</span><span>~2,100 lines</span></li>
+          <li><span>Of which, code that talks to Axernel</span><span>95 lines</span></li>
+        </ul>
+      </div>
+      <div>
+        <span class="tag">Axernel ran</span>
+        <ul class="plain">
+          <li><span>Isolated sandboxes, created, reused and destroyed per session</span><span></span></li>
+          <li><span>A durable run queue that survived an API restart mid-run</span><span></span></li>
+          <li><span>Input and output validated against our schemas</span><span></span></li>
+          <li><span>Secrets injected as env vars and MCP headers, never in prompts</span><span></span></li>
+          <li><span>Live event stream with resume, file artifacts, per-run cost</span><span></span></li>
+        </ul>
+      </div>
+    </div>
+  </section>
+
+  <section>
+    <div class="head">
+      <span class="eyebrow">The agent</span>
+      <h2>An agent is a contract, not a chat</h2>
+      <p>The app sends JSON that Axernel checks before admitting the run. The agent must submit JSON that Axernel checks before accepting the result. Files it promises are collected for us. The app never parses free text.</p>
+    </div>
+    <div class="trio">
+      <div class="card">
+        <h3>Input</h3>
+<pre>{
+  "source": "…/stackdome-demo/pull/8",
+  "ref": "axernel/walkthroughpark",
+  "subdir": "axernel/scratch/todo-app",
+  "instruction": "Show me the fix works",
+  "maxSeconds": 60
+}</pre>
+        <p>A bad link or a wrong duration is rejected with a 4xx before any sandbox starts.</p>
+        <a class="src" href="__GH__/bootstrap/agent.ts#L35">bootstrap/agent.ts · inputSchema</a>
+      </div>
+      <div class="card">
+        <h3>Output</h3>
+<pre>{
+  "title": "Todo status filters…",
+  "summary": "…",
+  "understoodFrom": ["PR #8 diff", "AGENTS.md"],
+  "scenes": [{ "scene": "active",
+               "narration": "…",
+               "startSec": 7.0 }],
+  "durationSec": 36.4,
+  "caveats": []
+}</pre>
+        <p>Scene start times drive the seek chips under the player. <code>caveats</code> is how the agent says "I could not boot this" instead of faking a video.</p>
+        <a class="src" href="__GH__/bootstrap/agent.ts#L48">bootstrap/agent.ts · outputSchema</a>
+      </div>
+      <div class="card">
+        <h3>Artifacts</h3>
+<pre>walkthrough.mp4        captioned
+walkthrough-clean.mp4  no captions
+walkthrough.srt        subtitles</pre>
+        <p>Declared on the agent. Axernel collects them from the sandbox after the result is accepted and serves them by id.</p>
+        <a class="src" href="__GH__/bootstrap/agent.ts#L81">bootstrap/agent.ts · artifacts</a>
+        <a class="src" href="__GH__/bootstrap/agent.ts#L7">bootstrap/agent.ts · the prompt</a>
+      </div>
+    </div>
+  </section>
+
+  <section>
+    <div class="head">
+      <span class="eyebrow">Templates</span>
+      <h2>The sandbox is a Docker image you own</h2>
+      <p>A template tells Axernel which image to start a sandbox from. Ours carries everything that is slow or fragile to install at run time: a browser, ffmpeg, a local text-to-speech voice with its weights baked in, the Argo recorder, and one command, <code>wtp-render</code>, that turns a demo script into a verified video. The agent decides what to show. The image knows how to film it.</p>
+    </div>
+    <figure>
+      <div class="scroll">
+        <svg viewBox="0 0 1000 150" role="img" aria-label="Template chain: a Dockerfile is built and pushed to a registry, its digest is registered as an Axernel template, the agent points at the template, a session pins the agent revision, and every run in that session starts a sandbox from that exact image.">
+          <defs>
+            <marker id="b-ink" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0 0 L10 5 L0 10 z" class="head-ink"/></marker>
+            <marker id="b-ax" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0 0 L10 5 L0 10 z" class="head-ax"/></marker>
+          </defs>
+          <rect class="yours" x="16" y="40" width="150" height="70" rx="8"/>
+          <text class="t-title" x="91" y="68" text-anchor="middle">Dockerfile</text>
+          <text class="t-muted" x="91" y="88" text-anchor="middle">27 lines</text>
+          <rect class="ext" x="216" y="40" width="150" height="70" rx="8"/>
+          <text class="t-title" x="291" y="68" text-anchor="middle">Docker Hub</text>
+          <text class="t-mono t-muted" x="291" y="88" text-anchor="middle">@sha256:dd6905ad…</text>
+          <rect class="ax" x="416" y="40" width="150" height="70" rx="8"/>
+          <text class="t-title" x="491" y="68" text-anchor="middle">Template</text>
+          <text class="t-mono t-muted" x="491" y="88" text-anchor="middle">templates.create</text>
+          <rect class="ax" x="616" y="40" width="150" height="70" rx="8"/>
+          <text class="t-title" x="691" y="68" text-anchor="middle">Agent revision</text>
+          <text class="t-mono t-muted" x="691" y="88" text-anchor="middle">templateId + prompt</text>
+          <rect class="ax" x="816" y="40" width="168" height="70" rx="8"/>
+          <text class="t-title" x="900" y="68" text-anchor="middle">Session → sandbox</text>
+          <text class="t-muted" x="900" y="88" text-anchor="middle">pins that revision</text>
+          <line class="wire" x1="166" y1="75" x2="214" y2="75" marker-end="url(#b-ink)"/>
+          <text class="t-muted" x="190" y="66" text-anchor="middle">push</text>
+          <line class="wire" x1="366" y1="75" x2="414" y2="75" marker-end="url(#b-ink)"/>
+          <text class="t-muted" x="390" y="66" text-anchor="middle">digest</text>
+          <line class="wire-ax" x1="566" y1="75" x2="614" y2="75" marker-end="url(#b-ax)"/>
+          <line class="wire-ax" x1="766" y1="75" x2="814" y2="75" marker-end="url(#b-ax)"/>
+          <text class="t-muted" x="500" y="134" text-anchor="middle">Templates are immutable. A new image digest is a new template, and sessions already running keep the old one.</text>
+        </svg>
+      </div>
+      <figcaption>Pinning by digest means a run is reproducible: the same prompt revision, the same tools, the same image.</figcaption>
+    </figure>
+    <div class="versions">
+      <div class="card"><b>0.1.0</b><p>First image. Ran on Modal at the first attempt once a model key was in place.</p></div>
+      <div class="card"><b>0.1.1</b><p>Added framing rules to the in-image guide after the first videos left the app small in the frame.</p></div>
+      <div class="card"><b>0.1.2</b><p>Found from the run's own event log: the first render always failed looking for the browser. One line in <code>wtp-render</code> removed a wasted take from every run.</p></div>
+    </div>
+    <p><b>The rule we settled on:</b> tool mechanics live in the image, which takes minutes to rebuild. Guidance that needs iterating lives in the agent's instructions, where <code>npm run setup</code> publishes a new revision in seconds. Six agent revisions and three images got us from first run to good framing.</p>
+    <p class="src">
+      <a href="__GH__/template/Dockerfile">template/Dockerfile</a> ·
+      <a href="__GH__/template/wtp-render">template/wtp-render</a> ·
+      <a href="__GH__/template/walkthrough/WALKTHROUGH.md">the in-image guide the agent reads first</a> ·
+      <a href="__GH__/bootstrap/shared.ts#L146">ensureTemplate()</a>
+    </p>
+  </section>
+
+  <section>
+    <div class="head">
+      <span class="eyebrow">The SDK</span>
+      <h2>All of it, in one file</h2>
+      <p>Every call the web app makes to Axernel sits behind five functions in <a href="__GH__/web/lib/server/axernel.ts">web/lib/server/axernel.ts</a>. Routes and UI never import the SDK. A longer map is in <a href="__GH__/docs/sdk-usage.md">docs/sdk-usage.md</a>.</p>
+    </div>
+    <div class="tablewrap">
+      <table>
+        <thead><tr><th>SDK call</th><th>Our function</th><th>When</th><th>Worth knowing</th></tr></thead>
+        <tbody>
+          <tr><td><code>auth.login</code></td><td><a class="src" href="__GH__/web/lib/server/axernel.ts#L78">login()</a></td><td>First call, then cached</td><td>Renewed once if a call reports an expired token.</td></tr>
+          <tr><td><code>sessions.create</code></td><td><a class="src" href="__GH__/web/lib/server/axernel.ts#L25">startRun()</a></td><td>User clicks "Take a walk"</td><td>Pins the agent revision. The session's name lives in <code>metadata.axernel.title</code>, which the Axernel console reads.</td></tr>
+          <tr><td><code>runs.create</code></td><td><a class="src" href="__GH__/web/lib/server/axernel.ts#L33">startRun()</a></td><td>Same request</td><td>Carries an idempotency key, so a retry cannot start two paid runs.</td></tr>
+          <tr><td><code>runs.events</code></td><td><a class="src" href="__GH__/web/lib/server/axernel.ts#L43">streamRunEvents()</a></td><td>While the run is live</td><td>Resumable with <code>lastEventId</code>. One server-side pump copies events to SQLite; browsers read from there.</td></tr>
+          <tr><td><code>runs.get</code></td><td><a class="src" href="__GH__/web/lib/server/axernel.ts#L37">readRun()</a></td><td>Page load and completion</td><td>The authoritative status, validated result, token usage, cost and artifact ids.</td></tr>
+          <tr><td><code>artifacts.download</code></td><td><a class="src" href="__GH__/web/lib/server/axernel.ts#L53">downloadArtifact()</a></td><td>First time a video is played</td><td>Cached on disk, then served with HTTP Range so the player can seek.</td></tr>
+        </tbody>
+      </table>
+    </div>
+    <p>Setup is the same idea turned into a script: one "ensure it exists" function per Axernel resource, safe to re-run.
+      <span class="src">
+        <a href="__GH__/bootstrap/shared.ts#L98">ensureProject</a> ·
+        <a href="__GH__/bootstrap/shared.ts#L105">ensureGithubSecret</a> ·
+        <a href="__GH__/bootstrap/shared.ts#L125">ensureModelProvider</a> ·
+        <a href="__GH__/bootstrap/shared.ts#L146">ensureTemplate</a> ·
+        <a href="__GH__/bootstrap/shared.ts#L158">ensureAgent</a> ·
+        <a href="__GH__/bootstrap/setup.ts">setup.ts</a>
+      </span>
+    </p>
+  </section>
+
+  <section>
+    <div class="head">
+      <span class="eyebrow">One run</span>
+      <h2>From a pasted link to a video</h2>
+    </div>
+    <ol class="life">
+      <li><b>queued</b><span>Input passes the schema. The run is saved and handed to the worker. The app gets an id back immediately.</span></li>
+      <li><b>preparing</b><span>Axernel starts a sandbox from the pinned image, uploads its runtime, connects the GitHub MCP server with the project secret.</span></li>
+      <li><b>running</b><span>The agent reads the PR, clones and boots the app, writes a demo script, runs <code>wtp-render</code>. Each tool call streams to the UI's trail and field notes.</span></li>
+      <li><b>completed</b><span>The result passes the output schema. Axernel publishes the three files, records tokens and cost, and releases the sandbox.</span></li>
+    </ol>
+    <div class="tablewrap">
+      <table>
+        <thead><tr><th>Real run</th><th>Input</th><th>Video</th><th>Wall clock</th><th>Tokens</th><th>Cost</th></tr></thead>
+        <tbody>
+          <tr><td>Repo with an instruction</td><td>"add, complete, delete"</td><td class="num">25.6 s</td><td class="num">~9 min</td><td class="num">510,600</td><td class="num">$0.010</td></tr>
+          <tr><td>PR #8, no instruction</td><td>feature inferred from the diff</td><td class="num">37.8 s</td><td class="num">~12 min</td><td class="num">1,001,330</td><td class="num">$0.026</td></tr>
+          <tr><td>Branch link, 30 s cap</td><td>flows chosen from AGENTS.md</td><td class="num">23.1 s</td><td class="num">9 min 06 s</td><td class="num">673,374</td><td class="num">$0.017</td></tr>
+          <tr><td>PR #8 on image 0.1.2</td><td>first render succeeds</td><td class="num">34.5 s</td><td class="num">10 min 24 s</td><td class="num">1,155,989</td><td class="num">$0.020</td></tr>
+          <tr><td>PR #8 on agent revision 6</td><td>framing rule applied</td><td class="num">36.4 s</td><td class="num">6 min 37 s</td><td class="num">1,002,850</td><td class="num">$0.020</td></tr>
+        </tbody>
+      </table>
+    </div>
+    <p class="muted">Usage and cost are reported by Axernel per run, from the model provider's prices registered at setup. The app only displays them.</p>
+  </section>
+
+  <section>
+    <div class="head">
+      <span class="eyebrow">See it in Axernel</span>
+      <h2>Open the same objects in the console</h2>
+      <p class="muted">These links go to a local Axernel on <code>127.0.0.1:8000</code>, signed in as the demo org. They work on the machine running the demo.</p>
+    </div>
+    <div class="doors">
+      <a class="door" href="http://127.0.0.1:8000/agents/1dbf11e7-8370-4065-a8ec-9f0d65a830bd"><b>The agent</b><span>prompt, contracts, MCP, revisions</span></a>
+      <a class="door" href="http://127.0.0.1:8000/templates/3fc52311-e694-4f1d-8f0a-6edee51a1ac7"><b>The template</b><span>image 0.1.2, pinned by digest</span></a>
+      <a class="door" href="http://127.0.0.1:8000/sessions/fbe68a92-6967-4eca-aa66-f63a465b38cb"><b>A session</b><span>titled from the pasted link</span></a>
+      <a class="door" href="http://127.0.0.1:8000/sessions"><b>All sessions</b><span>one per walkthrough</span></a>
+      <a class="door" href="http://127.0.0.1:8000/usage"><b>Usage</b><span>tokens and cost per run</span></a>
+      <a class="door" href="http://127.0.0.1:8000/secrets"><b>Secrets</b><span>the GitHub token, write-only</span></a>
+    </div>
+  </section>
+
+  <section>
+    <div class="head">
+      <span class="eyebrow">Why it was quick</span>
+      <h2>What Axernel gave us without being asked</h2>
+    </div>
+    <div class="caps">
+      <div class="cap"><b>Real isolation</b><span>The agent clones and runs strangers' code. It does that in a throwaway sandbox, not next to our app.</span></div>
+      <div class="cap"><b>Typed results</b><span>The UI renders a validated object. There is no prompt-output parsing anywhere in the codebase.</span></div>
+      <div class="cap"><b>Secrets that stay secret</b><span>The GitHub token is a project secret bound to an env var and an MCP header. It never appears in a prompt, a run or a log we store.</span></div>
+      <div class="cap"><b>Revisions and pinning</b><span>We changed the prompt six times while runs were in flight. Each session kept the revision it started with.</span></div>
+      <div class="cap"><b>Durable runs</b><span>We rebuilt and restarted the Axernel API in the middle of two runs. Both finished and delivered their videos.</span></div>
+      <div class="cap"><b>A live, resumable feed</b><span>Tool calls stream as they happen and can be replayed from an event id, which is what powers the trail and field notes.</span></div>
+      <div class="cap"><b>Files as first-class output</b><span>Declare a filename, get a downloadable artifact. No bucket, no upload code in the sandbox.</span></div>
+      <div class="cap"><b>Cost per run</b><span>Tokens and dollars come back on the run. The "$0.020" under each video is Axernel's number.</span></div>
+      <div class="cap"><b>MCP built in</b><span>The GitHub MCP server is three lines of agent config, connected before the prompt starts.</span></div>
+      <div class="cap"><b>Any model</b><span>The model is a provider record. Swapping DeepSeek for another model is a config change, not a code change.</span></div>
+    </div>
+    <details>
+      <summary>Rough edges we hit, for the platform team</summary>
+      <ul>
+        <li>The SDK applies its request timeout to the whole event stream; callers must pass a long timeout and reconnect.</li>
+        <li><code>artifacts.download</code> returns the whole file; there is no stream or Range, so apps cache.</li>
+        <li>Sessions have no <code>title</code> option; the console's convention is <code>metadata.axernel.title</code>, discoverable only from the frontend source.</li>
+        <li>The harness gives the agent its own HOME and drops the image's ENV, which broke Playwright's browser lookup until the render command set it.</li>
+        <li>Contract schemas accept a fixed keyword list (no <code>description</code>); the SDK types do not show that.</li>
+        <li>No run cancellation yet, and a new org starts with no model provider or template.</li>
+      </ul>
+    </details>
+  </section>
+
+  <footer>
+    <span>Code: <a href="https://github.com/Stackdome/stackdome-demo/tree/axernel/walkthroughpark/axernel">Stackdome/stackdome-demo · axernel/</a></span>
+    <span>Design notes: <a href="__GH__/docs/2026-09-21-walkthroughpark-design.md">walkthroughpark-design.md</a></span>
+    <span>Links pinned to commit <span class="mono">__SHA7__</span></span>
+  </footer>
+</div>
