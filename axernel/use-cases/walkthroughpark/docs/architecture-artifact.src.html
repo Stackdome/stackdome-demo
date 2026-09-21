@@ -386,6 +386,51 @@ walkthrough.srt        subtitles</pre>
 
   <section>
     <div class="head">
+      <span class="eyebrow">Inside the sandbox</span>
+      <h2>What happens in there while you wait</h2>
+      <p>The app only sends a repo or pull request link. Everything that makes the product work happens inside one Modal sandbox that Axernel starts from our image: it clones code it has never seen, installs it, runs it, drives a browser through it and cuts a video. None of that runs on our server.</p>
+    </div>
+    <style>
+      .sbx { list-style: none; margin: 0; padding: 0; display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 12px; counter-reset: sbx; }
+      .sbx li { counter-increment: sbx; border: 1px solid var(--line); border-radius: 12px; background: var(--surface); padding: 16px; display: flex; flex-direction: column; gap: 8px; font-size: 0.92rem; min-width: 0; }
+      .sbx li.model { background: var(--brand-wash); border-color: var(--brand-line); }
+      .sbx li::before { content: counter(sbx); font: 500 0.75rem var(--mono); color: var(--brand-ink); }
+      .sbx b { font-weight: 500; font-size: 1rem; }
+      .sbx span { color: var(--muted); }
+      .sbx em { font: 500 0.7rem/1 var(--mono); font-style: normal; letter-spacing: 0.08em; text-transform: uppercase; color: var(--muted); }
+      .sbx li.model em { color: var(--brand-ink); }
+      .sbx-out { border-collapse: collapse; width: 100%; font-size: 0.92rem; }
+      .sbx-out th, .sbx-out td { text-align: left; padding: 9px 12px 9px 0; border-bottom: 1px solid var(--line); vertical-align: top; }
+      .sbx-out th { font: 500 0.72rem/1.2 var(--mono); letter-spacing: 0.07em; text-transform: uppercase; color: var(--muted); }
+      .sbx-wrap { overflow-x: auto; }
+      .sbx-wrap table { min-width: 560px; }
+      @media (max-width: 820px) { .sbx { grid-template-columns: minmax(0, 1fr); } }
+    </style>
+    <ol class="sbx">
+      <li class="model"><em>The model decides</em><b>Work out what to show</b><span>The model reads the pull request through the GitHub tools Axernel wired in (title, description, diff), then the repo's own agent notes, the README and the code. It writes down what it relied on.</span></li>
+      <li class="model"><em>The model decides</em><b>Plan the video</b><span>Three to six scenes, inside the length limit you set. Anything not needed to understand the feature is cut.</span></li>
+      <li class="model"><em>The model decides</em><b>Get the app running</b><span>It clones the repo, checks out the pull request, installs dependencies and starts the dev server in the background, then polls the port until the app answers. The GitHub token is a secret Axernel injects; our app never sees it in the run.</span></li>
+      <li class="model"><em>The model decides</em><b>Write the demo</b><span>A scenes file with the narration, and a Playwright script that clicks through the feature. Selectors come from the app's source, and realistic data is seeded before recording starts.</span></li>
+      <li class="tool"><em>A tool in the image does</em><b>Film it</b><span><code>wtp-render</code> does five things in order: speaks the narration with a local text-to-speech voice whose weights are baked into the image, checks that scene names match, records the browser with Argo and exports video and captions, burns the captions in, and verifies the result has sound, is not silent, fits the time limit and is under 25 MB.</span></li>
+      <li class="model"><em>The model decides</em><b>Report honestly</b><span>On <code>WTP_ERROR</code> the tool names the scene that failed, and the model fixes the script and films again. At the end it submits the scenes with their start times and any caveats. If the app could not be started, it says so and sends no fake video.</span></li>
+    </ol>
+    <p class="muted">Orange steps are the model thinking. White steps are plain programs we baked into the image; they give the same answer every time and end with one line the model can act on.</p>
+    <div class="sbx-wrap">
+      <table class="sbx-out">
+        <thead><tr><th>File from the sandbox</th><th>Made by</th><th>What it becomes in the app</th></tr></thead>
+        <tbody>
+          <tr><td><code>walkthrough.mp4</code></td><td>wtp-render</td><td>The video in the player, with voice and captions.</td></tr>
+          <tr><td><code>walkthrough.srt</code></td><td>wtp-render</td><td>The captions tab.</td></tr>
+          <tr><td><code>walkthrough-clean.mp4</code></td><td>wtp-render</td><td>A copy without burned-in captions, to download.</td></tr>
+          <tr><td><code>result JSON</code></td><td>the model, checked by Axernel</td><td>The scene list with jump-to times, what the agent understood the change to be, and its caveats.</td></tr>
+        </tbody>
+      </table>
+    </div>
+    <p>The sandbox is thrown away when the run ends. What survives is the checked result and the three files, which Axernel stores and the app streams to the player.</p>
+  </section>
+
+  <section>
+    <div class="head">
       <span class="eyebrow">The SDK</span>
       <h2>All of it, in one file</h2>
       <p>Every call the web app makes to Axernel sits behind five functions in <a href="__GH__/web/lib/server/axernel.ts">web/lib/server/axernel.ts</a>. Routes and UI never import the SDK. A longer map is in <a href="__GH__/docs/sdk-usage.md">docs/sdk-usage.md</a>.</p>

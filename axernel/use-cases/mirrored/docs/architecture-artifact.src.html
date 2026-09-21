@@ -336,6 +336,54 @@ page.png        image/png</pre></div>
 
   <section>
     <div class="head">
+      <span class="eyebrow">Inside the sandbox</span>
+      <h2>What happens in there for fifteen minutes</h2>
+      <p>The app only sends a URL and a few words. Everything that makes the product work happens inside one Modal sandbox that Axernel starts from our image: a real browser, a Node toolchain, open internet, and a model that writes code and runs it. None of that runs on our server.</p>
+    </div>
+    <style>
+      .sbx { list-style: none; margin: 0; padding: 0; display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 12px; counter-reset: sbx; }
+      .sbx li { counter-increment: sbx; border: 1px solid var(--line); border-radius: 12px; background: var(--surface); padding: 16px; display: flex; flex-direction: column; gap: 8px; font-size: 0.92rem; min-width: 0; }
+      .sbx li.model { background: var(--brand-wash); border-color: var(--brand-line); }
+      .sbx li::before { content: counter(sbx); font: 500 0.75rem var(--mono); color: var(--brand-ink); }
+      .sbx b { font-weight: 500; font-size: 1rem; }
+      .sbx span { color: var(--muted); }
+      .sbx em { font: 500 0.7rem/1 var(--mono); font-style: normal; letter-spacing: 0.08em; text-transform: uppercase; color: var(--muted); }
+      .sbx li.model em { color: var(--brand-ink); }
+      .sbx-out { border-collapse: collapse; width: 100%; font-size: 0.92rem; }
+      .sbx-out th, .sbx-out td { text-align: left; padding: 9px 12px 9px 0; border-bottom: 1px solid var(--line); vertical-align: top; }
+      .sbx-out th { font: 500 0.72rem/1.2 var(--mono); letter-spacing: 0.07em; text-transform: uppercase; color: var(--muted); }
+      .sbx-wrap { overflow-x: auto; }
+      .sbx-wrap table { min-width: 560px; }
+      @media (max-width: 820px) { .sbx { grid-template-columns: minmax(0, 1fr); } }
+    </style>
+    <ol class="sbx">
+      <li class="tool"><em>A tool in the image does</em><b>Measure the brand</b><span><code>mir-brand</code> runs Dembrandt, an open-source extractor, over the site. Out come site-wide design tokens, a Tailwind theme, a shadcn theme and an HTML report. About 16 seconds.</span></li>
+      <li class="tool"><em>A tool in the image does</em><b>Find and measure the section</b><span><code>mir-measure --find "pricing cards"</code> opens the page in Chromium at 1280 and 390 pixels, finds the smallest element that contains those words, screenshots it, and writes down every box, colour, font and text position. It also downloads the images and the web fonts the page uses.</span></li>
+      <li class="model"><em>The model decides</em><b>Write tokens and the component</b><span>The model reads the measurements and writes <code>tokens.json</code> in the W3C design tokens format, then a typed React component styled with Tailwind classes that point at those tokens.</span></li>
+      <li class="tool"><em>A tool in the image does</em><b>Render and score</b><span><code>mir-reflect</code> turns the tokens into a Tailwind v4 theme, renders the React component on the server, builds the CSS, screenshots it at both widths and compares it with the original pixel by pixel. It prints a score, the boxes that differ with their coordinates and colours, any missing or extra text, and the minutes used.</span></li>
+      <li class="model"><em>The model decides</em><b>Fix the biggest difference, again</b><span>The model reads those lines, can open the original and the rebuild as images to compare by eye, edits the component and renders again. It stops at a score of 95 or when the clock says so.</span></li>
+      <li class="tool"><em>A tool in the image does</em><b>Pack</b><span><code>mir-pack</code> formats the code, builds a shadcn registry and a zip bundle without font files, writes a single-file preview and a small skin file, and copies everything into the folder Axernel collects artifacts from.</span></li>
+    </ol>
+    <p class="muted">Orange steps are the model thinking. White steps are plain programs we baked into the image; they give the same answer every time and end with one line the model can act on.</p>
+    <div class="sbx-wrap">
+      <table class="sbx-out">
+        <thead><tr><th>File from the sandbox</th><th>Made by</th><th>What it becomes in the app</th></tr></thead>
+        <tbody>
+          <tr><td><code>registry.zip</code></td><td>mir-pack</td><td>The <code>npx shadcn add</code> command. The app serves the registry JSON straight out of this zip.</td></tr>
+          <tr><td><code>preview.html</code></td><td>mir-reflect, mir-pack</td><td>The live component, shown in a locked-down iframe next to the code.</td></tr>
+          <tr><td><code>original.png, rebuild.png, diff.png</code></td><td>mir-measure, mir-reflect</td><td>The compare slider and the screenshots you can open full size.</td></tr>
+          <tr><td><code>tokens.json</code></td><td>the model</td><td>The tokens panel: colours, type, spacing, radius.</td></tr>
+          <tr><td><code>skin.json</code></td><td>mir-pack</td><td>The WEAR IT button, which re-skins the whole app in the mirrored look.</td></tr>
+          <tr><td><code>report.html, page.png</code></td><td>mir-brand, mir-measure</td><td>The brand report and the full-page screenshot.</td></tr>
+          <tr><td><code>result JSON</code></td><td>the model, checked by Axernel</td><td>The score dial, the number of passes and the field notes on what still differs.</td></tr>
+        </tbody>
+      </table>
+    </div>
+    <p>The sandbox is thrown away when the run ends. What survives is the checked result and the artifact files, which Axernel stores and the app downloads once and caches.</p>
+  </section>
+
+  <section>
+    <div class="head">
       <span class="eyebrow">SDK usage</span>
       <h2>Every Axernel call in the repo</h2>
       <p class="muted">Links go to the exact line on GitHub at commit <code>ddc78f3</code>.</p>
