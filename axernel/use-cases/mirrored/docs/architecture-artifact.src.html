@@ -410,7 +410,7 @@ page.png        image/png</pre></div>
       <p class="muted">Each point is something that happened during this build.</p>
     </div>
     <div class="gave">
-      <div><b>The output contract caught bad results</b><span>When the agent submitted a malformed result, Axernel rejected it against our schema. The UI never had to guard against half a result.</span></div>
+      <div><b>The output contract keeps the UI simple</b><span>Axernel checks every result against our schema before the app sees it. Every completed run gave the UI a score, passes and mismatches in the same shape, so the UI has no code that guards against half a result.</span></div>
       <div><b>Optional artifacts, honest caveats</b><span>All ten files are <code>required: false</code>. A brand-mode run returns five files and a section run ten, with the same agent and no special cases.</span></div>
       <div><b>Sessions pin the revision</b><span>We published 11 revisions of the instructions. Old results kept opening, because each session stays on the revision it started with.</span></div>
       <div><b>One model provider, two apps</b><span>Mirrored reused the provider WalkThroughPark created. Its key is write-only, so this app never saw or stored it.</span></div>
